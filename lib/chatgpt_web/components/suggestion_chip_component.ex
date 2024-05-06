@@ -1,10 +1,10 @@
-defmodule ChatGptUiWeb.SuggestionChipComponent do
-  use ChatGptUiWeb, :live_component
+defmodule ChatgptWeb.SuggestionChipComponent do
+  use ChatgptWeb, :live_component
 
   @impl true
   def render(assigns) do
     ~L"""
-    <div class="suggestion-chip">
+    <div class="suggestion-chip" role="button" aria-label="Suggestion <%= @text %>">
       <%= @text %>
     </div>
     """
