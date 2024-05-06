@@ -257,7 +257,7 @@ defmodule ChatgptWeb.IndexLive do
               <.live_component
                 module={ChatgptWeb.SuggestionChipComponent}
                 id={"suggestion_chip_#{suggestion}"}
-                text={suggestion}
+                text=suggestion
               />
             <% end %>
           </div>
