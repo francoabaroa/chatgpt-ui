@@ -56,25 +56,28 @@ defmodule ChatgptWeb.IndexLive do
           model
       end
 
-    {:ok,
-     socket
-     |> assign(initial_state())
-     |> assign(%{
-       #  openai_pid: pid,
-       message_store_pid: pid,
-       prepend_messages: scenario.messages,
-       dummy_messages:
-         [
-           %Chatgpt.Message{content: scenario.description, sender: :assistant, id: 0}
-         ]
-         |> fill_random_id(),
-       model: selected_model,
-       models: models,
-       active_model: Enum.find(models, &(&1.id == to_atom(selected_model))),
-       scenarios: Map.get(session, "scenarios"),
-       scenario: scenario,
-       mode: :scenario
-     })}
+    socket =
+      socket
+      |> assign(initial_state())
+      |> assign(%{
+        #  openai_pid: pid,
+        message_store_pid: pid,
+        prepend_messages: scenario.messages,
+        dummy_messages:
+          [
+            %Chatgpt.Message{content: scenario.description, sender: :assistant, id: 0}
+          ]
+          |> fill_random_id(),
+        model: selected_model,
+        models: models,
+        active_model: Enum.find(models, &(&1.id == to_atom(selected_model))),
+        scenarios: Map.get(session, "scenarios"),
+        scenario: scenario,
+        mode: :scenario
+      })
+
+    IO.inspect(socket.assigns, label: "mount assigns")
+    {:ok, socket}
   end
 
   def mount(_params, %{"model" => model, "models" => models} = session, socket) do
@@ -254,11 +257,10 @@ defmodule ChatgptWeb.IndexLive do
         <div>
           <div class="suggestion-chips-container">
             <%= for suggestion <- @suggestions do %>
-              <.live_component
-                module={ChatgptWeb.SuggestionChipComponent}
-                id={"suggestion_chip_#{suggestion}"}
-                text=suggestion
-              />
+              <%= live_component @socket, ChatgptWeb.SuggestionChipComponent,
+                id: "suggestion_chip_#{suggestion}",
+                text: suggestion
+              %>
             <% end %>
           </div>
           <.live_component

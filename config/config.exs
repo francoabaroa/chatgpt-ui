@@ -55,7 +55,13 @@ config :chatgpt, ChatgptWeb.Endpoint,
     layout: false
   ],
   pubsub_server: Chatgpt.PubSub,
-  live_view: [signing_salt: "U3AoOojJ"]
+  live_view: [signing_salt: "U3AoOojJ"],
+  session_options: [
+    store: :cookie,
+    key: "_chatgpt_key",
+    signing_salt: "GNrIXLsW",
+    same_site: "Lax"
+  ]
 
 # Configure esbuild (the version is required)
 config :esbuild,
