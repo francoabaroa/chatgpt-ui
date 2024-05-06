@@ -185,7 +185,7 @@ defmodule ChatgptWeb.IndexLive do
   end
 
   # message when loading should not get processed
-  def handle_info({:msg_submit, text}, %{assigns: %{loading: true}} = socket) do
+  def handle_info({:msg_submit, _text}, %{assigns: %{loading: true}} = socket) do
     {:noreply, socket}
   end
 
@@ -244,8 +244,6 @@ defmodule ChatgptWeb.IndexLive do
   end
 
   def render(assigns) do
-    IO.inspect(assigns, label: "render assigns")
-    IO.inspect(@suggestions, label: "Suggestion list")
     ~H"""
     <div
       id="chatgpt"
@@ -259,7 +257,7 @@ defmodule ChatgptWeb.IndexLive do
               <.live_component
                 module={ChatgptWeb.SuggestionChipComponent}
                 id={"suggestion_chip_#{suggestion}"}
-                text=suggestion
+                text={suggestion}
               />
             <% end %>
           </div>
