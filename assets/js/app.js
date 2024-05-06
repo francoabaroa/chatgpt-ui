@@ -44,7 +44,7 @@ let csrfToken = document
     .querySelector("meta[name='csrf-token']")
     .getAttribute("content");
 
-let liveSocket = new LiveSocket("ws://127.0.0.1:4000/live", Socket, {
+let liveSocket = new LiveSocket("ws://127.0.0.1:4001/live", Socket, {
     params: { _csrf_token: csrfToken },
     hooks: Hooks,
 });
