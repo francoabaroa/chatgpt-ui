@@ -27,8 +27,8 @@ defmodule ChatgptWeb.TextboxComponent do
     assigns =
       assign(assigns, :onkeydown, """
       if(event.keyCode == 13 && event.shiftKey == false) {
-       		document.getElementById('submitbtn').click();
-       	 return false;}
+      		document.getElementById('submitbtn').click();
+      	 return false;}
       """)
 
     ~H"""
@@ -52,9 +52,9 @@ defmodule ChatgptWeb.TextboxComponent do
     ~H"""
     <div id="textbox" class="">
       <div class="suggestion-chips-container">
-        <%= for suggestion <- @suggestions do %>
+        <%= for {suggestion, index} <- Enum.with_index(@suggestions) do %>
           <%= live_component @socket, ChatgptWeb.SuggestionChipComponent,
-            id: "suggestion_chip_#{suggestion}",
+            id: "suggestion_chip_#{suggestion}_#{index}",
             text: suggestion
           %>
         <% end %>
