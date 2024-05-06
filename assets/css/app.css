@@ -3,4 +3,49 @@
 @import "tailwindcss/utilities";
 
 /* This file is for your main application CSS */
-@import "../../node_modules/highlight.js/styles/googlecode.css"
+@import "../../node_modules/highlight.js/styles/googlecode.css";
+
+/* Marquee effect for suggestion chips */
+@keyframes marquee {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+.suggestion-chip {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  margin-right: 0.5rem;
+  background-color: #f3f4f6; /* light gray */
+  color: #1f2937; /* dark gray */
+  border-radius: 9999px; /* fully rounded corners */
+  white-space: nowrap;
+  animation: marquee 10s linear infinite;
+}
+
+.suggestion-chips-container {
+  overflow-x: hidden;
+  white-space: nowrap;
+}
+
+/* Responsive design for suggestion chips */
+@media (max-width: 600px) {
+  .suggestion-chip {
+    padding: 0.25rem 0.5rem;
+    margin-right: 0.25rem;
+    font-size: 0.75rem;
+  }
+}
+
+@media (min-width: 601px) and (max-width: 1024px) {
+  .suggestion-chip {
+    padding: 0.4rem 0.8rem;
+    margin-right: 0.4rem;
+    font-size: 0.875rem;
+  }
+}
+
+/* Accessibility improvements for suggestion chips */
+.suggestion-chip {
+  cursor: pointer;
+  /* ARIA attributes will be added dynamically in the LiveView component */
+}

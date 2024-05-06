@@ -4,7 +4,12 @@ defmodule ChatgptWeb.IndexLive do
   alias ChatgptWeb.AlertComponent
   use ChatgptWeb, :live_view
 
-  @type state :: %{messages: [Message.t()], loading: boolean(), streaming_message: Message.t()}
+  @type state :: %{
+    messages: [Message.t()],
+    loading: boolean(),
+    streaming_message: Message.t(),
+    suggestions: [String.t()]
+  }
 
   @spec dummy_messages() :: [Message.t()]
   defp dummy_messages,
@@ -19,7 +24,8 @@ defmodule ChatgptWeb.IndexLive do
       prepend_messages: [],
       messages: [],
       loading: false,
-      streaming_message: %Message{content: "", sender: :assistant, id: -1}
+      streaming_message: %Message{content: "", sender: :assistant, id: -1},
+      suggestions: ["Help", "Settings", "Logout"] # Predefined list of suggestions
     }
 
   defp fill_random_id(messages),
@@ -242,6 +248,14 @@ defmodule ChatgptWeb.IndexLive do
     >
       <div class="mb-32" style="flex-grow: 1;">
         <div>
+          <div class="suggestion-chips-container">
+            <%= for suggestion <- @suggestions do %>
+              <.live_component
+                module={ChatgptWeb.SuggestionChipComponent}
+                text={suggestion}
+              />
+            <% end %>
+          </div>
           <.live_component
             module={ChatgptWeb.MessageListComponent}
             messages={assigns.dummy_messages ++ assigns.messages ++ [assigns.streaming_message]}
