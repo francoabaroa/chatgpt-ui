@@ -51,6 +51,11 @@ wsUrl += window.location.host + "/live";
 let liveSocket = new LiveSocket(wsUrl, Socket, {
     params: { _csrf_token: csrfToken },
     hooks: Hooks,
+    // Add reconnect options to handle disconnections
+    reconnectAfterMs: (tries) => {
+        // Use exponential backoff for reconnect timing
+        return Math.min(tries * 2000, 10000);
+    },
 });
 
 // Show progress bar on live navigation and form submits

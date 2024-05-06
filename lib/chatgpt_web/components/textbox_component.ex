@@ -6,7 +6,7 @@ defmodule ChatgptWeb.TextboxComponent do
   def mount(socket) do
     {:ok,
      socket
-     |> assign(form: new_form(), text: "")}
+     |> assign(form: new_form(), text: "", suggestions: ["Help", "Settings", "Logout"])}
   end
 
   def handle_event("onsubmit", %{"main" => %{"text" => text}}, socket) do
@@ -27,8 +27,8 @@ defmodule ChatgptWeb.TextboxComponent do
     assigns =
       assign(assigns, :onkeydown, """
       if(event.keyCode == 13 && event.shiftKey == false) {
-      		document.getElementById('submitbtn').click();
-      	 return false;}
+       		document.getElementById('submitbtn').click();
+       	 return false;}
       """)
 
     ~H"""
@@ -51,6 +51,14 @@ defmodule ChatgptWeb.TextboxComponent do
   def render(assigns) do
     ~H"""
     <div id="textbox" class="">
+      <div class="suggestion-chips-container">
+        <%= for suggestion <- @suggestions do %>
+          <%= live_component @socket, ChatgptWeb.SuggestionChipComponent,
+            id: "suggestion_chip_#{suggestion}",
+            text: suggestion
+          %>
+        <% end %>
+      </div>
       <p><%= @text %></p>
       <.form
         class="stretch mx-2 flex flex-row gap-3 last:mb-2 md:mx-4 md:last:mb-6 lg:mx-auto lg:max-w-3xl"
