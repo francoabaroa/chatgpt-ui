@@ -8,7 +8,7 @@
 /* Marquee effect for suggestion chips */
 @keyframes marquee {
   0% { transform: translateX(0%); }
-  100% { transform: translateX(-150%); }
+  100% { transform: translateX(-100%); }
 }
 
 .suggestion-chip {
@@ -25,6 +25,9 @@
 .suggestion-chips-container {
   overflow-x: hidden;
   white-space: nowrap;
+  position: absolute; /* Position the chips container above the textbox */
+  bottom: 3rem; /* Adjust the bottom value to position it above the textbox */
+  width: 100%;
 }
 
 /* Responsive design for suggestion chips */
