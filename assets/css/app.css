@@ -25,9 +25,9 @@
 .suggestion-chips-container {
   overflow-x: hidden;
   white-space: nowrap;
-  position: absolute; /* Position the chips container above the textbox */
-  bottom: 15rem; /* Adjust the bottom value to position it correctly above the textbox */
+  /* Adjusted positioning to be relative */
   width: 100%;
+  margin-bottom: 1rem; /* Space between chips and textbox */
 }
 
 /* Responsive design for suggestion chips */
