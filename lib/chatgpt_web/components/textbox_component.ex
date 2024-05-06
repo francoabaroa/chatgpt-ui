@@ -49,6 +49,7 @@ defmodule ChatgptWeb.TextboxComponent do
   attr :disabled, :boolean, required: true
 
   def render(assigns) do
+    IO.inspect(Enum.with_index(@suggestions), label: "Suggestion IDs")
     ~H"""
     <div id="textbox" class="">
       <div class="suggestion-chips-container">
