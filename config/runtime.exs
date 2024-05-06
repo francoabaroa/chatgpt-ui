@@ -17,14 +17,9 @@ import Config
 # Alternatively, you can use `mix phx.gen.release` to generate a `bin/server`
 # script that automatically sets the env var above.
 
-get_or_raise = fn key ->
-  System.get_env(key) ||
-    raise "#{key} is not set. Set the environment variable, or change this in runtime.exs"
-end
-
 config :ex_openai,
-  api_key: get_or_raise.("OPENAI_API_KEY"),
-  organization_key: get_or_raise.("OPENAI_ORGANIZATION_KEY"),
+  api_key: "sk-proj-RCI8TWtJFvaG4tRvhVNyT3BlbkFJoOZqvRtVrv2FfYsaS5lL",
+  organization_key: "org-iKaeoNfy0WQWyRoB4UZgSys5",
   http_options: [recv_timeout: 30_000]
 
 config :elixir_auth_google,

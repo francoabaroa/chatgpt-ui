@@ -43,7 +43,7 @@ config :chatgpt,
       name: "GPT4 32k (EXPENSIVE!) (OpenAI)"
     }
   ],
-  enable_google_oauth: true,
+  enable_google_oauth: false,
   restrict_email_domains: true,
   allowed_email_domains: ["google.com"]
 

@@ -249,9 +249,10 @@ defmodule ChatgptWeb.IndexLive do
       <div class="mb-32" style="flex-grow: 1;">
         <div>
           <div class="suggestion-chips-container">
-            <%= for suggestion <- @suggestions do %>
+            <%= for {suggestion, index} <- Enum.with_index(@suggestions) do %>
               <.live_component
                 module={ChatgptWeb.SuggestionChipComponent}
+                id={"suggestion_chip_#{index}"}
                 text={suggestion}
               />
             <% end %>
