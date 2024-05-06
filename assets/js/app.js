@@ -24,29 +24,29 @@ import topbar from "../vendor/topbar";
 import hljs from "highlight.js";
 
 function scrollToBottom() {
-	window.scrollTo(0, document.body.scrollHeight);
-	document
-		.querySelector(".drawer-content")
-		.scrollTo(0, document.body.scrollHeight);
+    window.scrollTo(0, document.body.scrollHeight);
+    document
+        .querySelector(".drawer-content")
+        .scrollTo(0, document.body.scrollHeight);
 }
 
 function scrollToLastChatBubble() {
-	let chatBubbles = document.querySelectorAll(".chat");
-	let lastChatBubble = chatBubbles[chatBubbles.length - 1];
-	if (lastChatBubble) {
-		lastChatBubble.scrollIntoView({ behavior: "smooth", block: "start" });
-	}
+    let chatBubbles = document.querySelectorAll(".chat");
+    let lastChatBubble = chatBubbles[chatBubbles.length - 1];
+    if (lastChatBubble) {
+        lastChatBubble.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
 }
 
 let Hooks = {};
 
 let csrfToken = document
-	.querySelector("meta[name='csrf-token']")
-	.getAttribute("content");
+    .querySelector("meta[name='csrf-token']")
+    .getAttribute("content");
 
-let liveSocket = new LiveSocket("/live", Socket, {
-	params: { _csrf_token: csrfToken },
-	hooks: Hooks,
+let liveSocket = new LiveSocket("ws://127.0.0.1:4000/live", Socket, {
+    params: { _csrf_token: csrfToken },
+    hooks: Hooks,
 });
 
 // Show progress bar on live navigation and form submits
@@ -64,7 +64,7 @@ liveSocket.connect();
 window.liveSocket = liveSocket;
 
 window.addEventListener(`phx:newmessage`, (e) => {
-	console.log("new message arrived");
-	hljs.highlightAll();
-	scrollToLastChatBubble();
+    console.log("new message arrived");
+    hljs.highlightAll();
+    scrollToLastChatBubble();
 });

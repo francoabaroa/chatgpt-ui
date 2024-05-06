@@ -245,6 +245,7 @@ defmodule ChatgptWeb.IndexLive do
 
   def render(assigns) do
     IO.inspect(assigns, label: "render assigns")
+    IO.inspect(@suggestions, label: "Suggestion list")
     ~H"""
     <div
       id="chatgpt"
@@ -254,11 +255,11 @@ defmodule ChatgptWeb.IndexLive do
       <div class="mb-32" style="flex-grow: 1;">
         <div>
           <div class="suggestion-chips-container">
-            <%= for {suggestion, index} <- Enum.with_index(@suggestions) do %>
+            <%= for suggestion <- @suggestions do %>
               <.live_component
                 module={ChatgptWeb.SuggestionChipComponent}
-                id={"suggestion_chip_#{index}"}
-                text={suggestion}
+                id={"suggestion_chip_#{suggestion}"}
+                text=suggestion
               />
             <% end %>
           </div>
