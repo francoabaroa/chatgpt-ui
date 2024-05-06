@@ -43,6 +43,8 @@ defmodule ChatgptWeb.IndexLive do
           session,
         socket
       ) do
+    IO.inspect(_params, label: "mount params")
+    IO.inspect(session, label: "mount session")
     {:ok, pid} = Chatgpt.MessageStore.start_link([])
 
     selected_model =
@@ -76,6 +78,8 @@ defmodule ChatgptWeb.IndexLive do
   end
 
   def mount(_params, %{"model" => model, "models" => models} = session, socket) do
+    IO.inspect(_params, label: "mount params")
+    IO.inspect(session, label: "mount session")
     # {:ok, pid} = Chatgpt.Openai.start_link(%{})
     {:ok, pid} = Chatgpt.MessageStore.start_link([])
 
@@ -240,6 +244,7 @@ defmodule ChatgptWeb.IndexLive do
   end
 
   def render(assigns) do
+    IO.inspect(assigns, label: "render assigns")
     ~H"""
     <div
       id="chatgpt"

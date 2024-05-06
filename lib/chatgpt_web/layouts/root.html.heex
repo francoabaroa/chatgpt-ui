@@ -29,7 +29,7 @@
                       <summary>
                         Model: <%= Enum.find(
                           assigns[:models],
-                          &(&1.id == String.to_atom(assigns[:model]))
+                          &(&1.id == assigns[:model])
                         ).name %>
                       </summary>
 

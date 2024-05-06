@@ -3,9 +3,9 @@ defmodule ChatgptWeb.SuggestionChipComponent do
 
   @impl true
   def render(assigns) do
-    ~L"""
-    <div class="suggestion-chip" role="button" aria-label="Suggestion <%= @text %>">
-      <%= @text %>
+    ~H"""
+    <div class="suggestion-chip" role="button" aria-label={"Suggestion " <> @text}>
+      {@text}
     </div>
     """
   end
