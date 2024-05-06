@@ -6,7 +6,7 @@ defmodule ChatgptWeb.TextboxComponent do
   def mount(socket) do
     {:ok,
      socket
-     |> assign(form: new_form(), text: "", suggestions: ["Help", "Settings", "Logout"])}
+     |> assign(form: new_form(), text: "")}
   end
 
   def handle_event("onsubmit", %{"main" => %{"text" => text}}, socket) do
@@ -27,8 +27,8 @@ defmodule ChatgptWeb.TextboxComponent do
     assigns =
       assign(assigns, :onkeydown, """
       if(event.keyCode == 13 && event.shiftKey == false) {
-      		document.getElementById('submitbtn').click();
-      	 return false;}
+        document.getElementById('submitbtn').click();
+        return false;}
       """)
 
     ~H"""
@@ -49,11 +49,12 @@ defmodule ChatgptWeb.TextboxComponent do
   attr :disabled, :boolean, required: true
 
   def render(assigns) do
-    IO.inspect(Enum.with_index(@suggestions), label: "Suggestion IDs")
+    suggestions = ["Help", "Settings", "Logout"] # Ensure suggestions are not nil
+    IO.inspect(Enum.with_index(suggestions), label: "Suggestion IDs")
     ~H"""
     <div id="textbox" class="">
       <div class="suggestion-chips-container">
-        <%= for {suggestion, index} <- Enum.with_index(@suggestions) do %>
+        <%= for {suggestion, index} <- Enum.with_index(suggestions) do %>
           <%= live_component @socket, ChatgptWeb.SuggestionChipComponent,
             id: "suggestion_chip_#{suggestion}_#{index}",
             text: suggestion
