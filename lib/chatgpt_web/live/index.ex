@@ -255,14 +255,7 @@ defmodule ChatgptWeb.IndexLive do
     >
       <div class="mb-32" style="flex-grow: 1;">
         <div>
-          <div class="suggestion-chips-container">
-            <%= for suggestion <- @suggestions do %>
-              <%= live_component @socket, ChatgptWeb.SuggestionChipComponent,
-                id: "suggestion_chip_#{suggestion}",
-                text: suggestion
-              %>
-            <% end %>
-          </div>
+          <!-- Suggestion chips rendering removed to prevent duplication -->
           <.live_component
             module={ChatgptWeb.MessageListComponent}
             messages={assigns.dummy_messages ++ assigns.messages ++ [assigns.streaming_message]}

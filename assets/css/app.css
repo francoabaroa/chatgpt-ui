@@ -28,6 +28,8 @@
   /* Adjusted positioning to be relative */
   width: 100%;
   margin-bottom: 1rem; /* Space between chips and textbox */
+  display: flex; /* Ensure the container is a flex container */
+  flex-wrap: nowrap; /* Prevent chips from wrapping */
 }
 
 /* Responsive design for suggestion chips */
