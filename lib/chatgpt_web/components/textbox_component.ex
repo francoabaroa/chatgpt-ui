@@ -49,25 +49,22 @@ defmodule ChatgptWeb.TextboxComponent do
   attr :disabled, :boolean, required: true
 
   def render(assigns) do
-    suggestions = ["Help", "Settings", "Logout"] # Ensure suggestions are not nil
-    IO.inspect(Enum.with_index(suggestions), label: "Suggestion IDs")
     ~H"""
     <div id="textbox" class="">
-      <div class="suggestion-chips-container">
-        <%= for {suggestion, index} <- Enum.with_index(suggestions) do %>
-          <%= live_component @socket, ChatgptWeb.SuggestionChipComponent,
-            id: "suggestion_chip_#{suggestion}_#{index}",
-            text: suggestion
-          %>
-        <% end %>
-      </div>
-      <p><%= @text %></p>
       <.form
-        class="stretch mx-2 flex flex-row gap-3 last:mb-2 md:mx-4 md:last:mb-6 lg:mx-auto lg:max-w-3xl"
+        class="stretch mx-2 flex flex-col gap-3 last:mb-2 md:mx-4 md:last:mb-6 lg:mx-auto lg:max-w-3xl"
         phx-target={@myself}
         phx-submit="onsubmit"
         for={@form}
       >
+        <div class="suggestion-chips-container">
+          <%= for suggestion <- @suggestions do %>
+            <%= live_component @socket, ChatgptWeb.SuggestionChipComponent,
+              id: "suggestion_chip_#{suggestion}",
+              text: suggestion
+            %>
+          <% end %>
+        </div>
         <div class="flex flex-col w-full py-2 flex-grow md:py-3 md:pl-4 relative border border-black/10 bg-white dark:border-gray-900/50 dark:text-white dark:bg-gray-700 rounded-md shadow-[0_0_10px_rgba(0,0,0,0.10)] dark:shadow-[0_0_15px_rgba(0,0,0,0.10)]">
           <.textarea disabled={@disabled} field={@form[:text]} myself={@myself} text={@text} />
           <button
