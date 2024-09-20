@@ -39,11 +39,17 @@ defmodule Chatgpt.OpenAI2 do
           |> List.first()
           |> Map.get(:delta)
           |> Map.get(:content)
+          |> escape_backticks()
 
         callback.({:data, chunk_text})
 
-      # {:data, data} ->
-      #   IO.puts("Data: #{inspect(data)}")
+      {:data, data} when is_map(data) ->
+        chunk_text =
+          data
+          |> get_in([:choices, Access.at(0), :delta, :content])
+          |> escape_backticks()
+
+        if chunk_text, do: callback.({:data, chunk_text})
 
       {:error, err} ->
         IO.puts("Error: #{inspect(err)}")
@@ -66,5 +72,11 @@ defmodule Chatgpt.OpenAI2 do
     end
 
     :ok
+  end
+
+  defp escape_backticks(nil), do: nil
+
+  defp escape_backticks(text) when is_binary(text) do
+    String.replace(text, "`", "\\`")
   end
 end

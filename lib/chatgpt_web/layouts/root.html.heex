@@ -27,10 +27,14 @@
                   <li>
                     <details>
                       <summary>
-                        Model: <%= Enum.find(
-                          assigns[:models],
-                          &(&1.id == String.to_atom(assigns[:model]))
-                        ).name %>
+                        <%= for model <- @models do %>
+                          <option
+                            value={to_string(model.id)}
+                            selected={to_string(@model) == to_string(model.id)}
+                          >
+                            <%= model.name %>
+                          </option>
+                        <% end %>
                       </summary>
 
                       <ul class="p-2 z-10 bg-base-100">

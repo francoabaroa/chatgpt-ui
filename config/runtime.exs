@@ -113,4 +113,9 @@ if config_env() == :prod do
   #     config :swoosh, :api_client, Swoosh.ApiClient.Hackney
   #
   # See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.
+
+  config :chatgpt,
+    openai_api_key: get_or_raise.("OPENAI_API_KEY"),
+    anthropic_api_key: get_or_raise.("ANTHROPIC_API_KEY"),
+    google_api_key: get_or_raise.("GOOGLE_API_KEY")
 end

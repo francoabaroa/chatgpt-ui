@@ -55,23 +55,23 @@ defmodule Chatgpt.MixProject do
       {:gettext, "~> 0.20"},
       {:jason, "~> 1.2"},
       {:plug_cowboy, "~> 2.5"},
-      {:ex_openai, ">=  1.5.0"},
+      {:ex_openai, ">= 1.7.0"},
       # {:ex_openai, path: "/Users/david.mohl/syncsrc/openai.ex"},
       # {:ex_openai, github: "dvcrn/ex_openai", branch: "main"},
       {:earmark, "~> 1.4.37"},
       {:elixir_auth_google, "~> 1.6.5"},
-      {:httpoison, "~> 2.0.0", override: true},
+      {:httpoison, "~> 2.1", override: true},
       {:cachex, "~> 3.6"},
       {:elixir_uuid, "~> 1.2"},
       {:tokenizers, "~> 0.3.0"},
-      {:aws, git: "https://github.com/aws-beam/aws-elixir.git"},
+      {:aws, "~> 1.0.0"},
       {:hackney, "~> 1.18"},
-      {:finch, "~> 0.13.0"},
-			{:tesla, "~> 1.4"},
-      {:goth, "~> 1.3.0"},
-
-			{:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-			{:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:finch, "~> 0.16"},
+      {:tesla, "~> 1.4"},
+      {:goth, "~> 1.4"},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:dotenv, "~> 3.0.0", only: [:dev, :test]}
     ]
   end
 
