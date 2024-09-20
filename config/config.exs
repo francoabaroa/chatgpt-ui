@@ -10,7 +10,7 @@ import Config
 config :chatgpt,
   title: "Incurator Internal",
   # or gpt-3.5-turbo
-  default_model: :"gpt-4",
+  default_model: :"gpt-4o-mini",
   models: [
     %{
       id: :"anthropic.claude-3-sonnet-20240229-v1:0",
