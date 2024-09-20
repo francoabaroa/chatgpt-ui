@@ -101,18 +101,21 @@
             <li>
               <div class="h-4"></div>
               <h2 class="menu-title">Assistants</h2>
-              <ul>
-                <%= for scenario <- assigns[:scenarios]  do %>
-                  <li>
-                    <.link
-                      class={"#{active_scenario(Map.get(assigns, :scenario, nil), scenario)}"}
-                      navigate={~p"/assistant/#{scenario.id}"}
-                    >
-                      <%= scenario.name %>
-                    </.link>
-                  </li>
-                <% end %>
-              </ul>
+              <%= for {category, scenarios} <- Enum.group_by(scenarios(assigns), & &1.category) do %>
+                <ul>
+                  <li class="menu-title"><%= Phoenix.Naming.humanize(category) %></li>
+                  <%= for scenario <- scenarios do %>
+                    <li>
+                      <.link
+                        class={"#{active_scenario(Map.get(assigns, :scenario, nil), scenario)}"}
+                        navigate={~p"/assistant/#{scenario.id}"}
+                      >
+                        <%= scenario.name %>
+                      </.link>
+                    </li>
+                  <% end %>
+                </ul>
+              <% end %>
             </li>
           </ul>
         </aside>

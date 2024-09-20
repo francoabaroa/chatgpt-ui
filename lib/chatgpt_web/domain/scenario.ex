@@ -1,5 +1,5 @@
 defmodule ChatgptWeb.Scenario do
-  defstruct [:id, :name, :messages, :description, :keep_context, :force_model]
+  defstruct [:id, :name, :messages, :description, :keep_context, :force_model, :category]
   # @enforce_keys [:sender, :content]
 
   @type t :: %__MODULE__{
@@ -8,7 +8,8 @@ defmodule ChatgptWeb.Scenario do
           messages: [Chatgpt.Message.t()],
           description: String.t(),
           keep_context: boolean(),
-          force_model: atom()
+          force_model: atom(),
+          category: atom()
         }
 
   @spec default_scenarios() :: [t()]
@@ -25,7 +26,8 @@ defmodule ChatgptWeb.Scenario do
             sender: :system
           }
         ],
-        keep_context: false
+        keep_context: false,
+        category: :general
       },
       %{
         id: "business-plan-creator",
@@ -38,7 +40,8 @@ defmodule ChatgptWeb.Scenario do
             sender: :system
           }
         ],
-        keep_context: false
+        keep_context: false,
+        category: :business
       },
       %{
         id: "marketing-plan-creator",
@@ -51,7 +54,8 @@ defmodule ChatgptWeb.Scenario do
             sender: :system
           }
         ],
-        keep_context: false
+        keep_context: false,
+        category: :marketing
       },
       %{
         id: "product-spec-writer",
@@ -64,7 +68,8 @@ defmodule ChatgptWeb.Scenario do
             sender: :system
           }
         ],
-        keep_context: false
+        keep_context: false,
+        category: :product
       },
       %{
         id: "hr-assistant",
@@ -78,7 +83,8 @@ defmodule ChatgptWeb.Scenario do
             sender: :system
           }
         ],
-        keep_context: false
+        keep_context: false,
+        category: :human_resources
       },
       %{
         id: "finance-assistant",
@@ -91,7 +97,8 @@ defmodule ChatgptWeb.Scenario do
             sender: :system
           }
         ],
-        keep_context: false
+        keep_context: false,
+        category: :finance
       },
       %{
         id: "legal-assistant",
@@ -104,7 +111,8 @@ defmodule ChatgptWeb.Scenario do
             sender: :system
           }
         ],
-        keep_context: false
+        keep_context: false,
+        category: :legal
       },
       %{
         id: "sales-assistant",
@@ -117,7 +125,8 @@ defmodule ChatgptWeb.Scenario do
             sender: :system
           }
         ],
-        keep_context: false
+        keep_context: false,
+        category: :sales
       }
     ]
   end
