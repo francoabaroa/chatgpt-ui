@@ -100,7 +100,7 @@
             </li>
             <li>
               <div class="h-4"></div>
-              <h2 class="menu-title">Assistants</h2>
+              <h2 class="menu-title text-base-content font-semibold">Assistants</h2>
               <%= for {category, scenarios} <- Enum.group_by(scenarios(assigns), & &1.category) do %>
                 <ul>
                   <li class="menu-title"><%= Phoenix.Naming.humanize(category) %></li>
