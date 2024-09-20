@@ -27,7 +27,7 @@ In config.exs, you can set the following keys:
 
 ```elixir
 config :chatgpt,
-  title: "Elixir ChatGPT",
+  title: "Incurator Internal",
   enable_google_oauth: true,
   restrict_email_domains: false,
   allowed_email_domains: ["google.com"]

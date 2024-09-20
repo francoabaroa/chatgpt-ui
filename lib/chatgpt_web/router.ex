@@ -20,7 +20,7 @@ defmodule ChatgptWeb.Router do
 
     get "/", PageController, :chat
     get "/chat", PageController, :chat
-    get "/scenario/:scenario_id", PageController, :scenario
+    get "/assistant/:scenario_id", PageController, :scenario
 
     get "/auth/google/callback", PageController, :oauth_callback
   end

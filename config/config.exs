@@ -8,7 +8,7 @@
 import Config
 
 config :chatgpt,
-  title: "Elixir ChatGPT",
+  title: "Incurator Internal",
   # or gpt-3.5-turbo
   default_model: :"gpt-4",
   models: [
@@ -23,6 +23,18 @@ config :chatgpt,
       provider: :google,
       truncate_tokens: 100_000,
       name: "Gemini Pro (Google)"
+    },
+    %{
+      id: :"gpt-4o",
+      provider: :openai,
+      truncate_tokens: 128_000,
+      name: "GPT-4o (OpenAI)"
+    },
+    %{
+      id: :"gpt-4o-mini",
+      provider: :openai,
+      truncate_tokens: 128_000,
+      name: "GPT-4o Mini (OpenAI)"
     },
     %{
       id: :"gpt-4",
