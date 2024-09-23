@@ -38,7 +38,8 @@ config :chatgpt,
   google_cloud_project_id: System.get_env("GOOGLE_CLOUD_PROJECT_ID")
 
 if config_env() == :prod do
-  maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
+  # TODO: db?
+  # maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
   config :chatgpt, ChatgptWeb.Endpoint, server: true
   # The secret key base is used to sign/encrypt cookies and other secrets.
@@ -115,7 +116,8 @@ if config_env() == :prod do
   # See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.
 
   config :chatgpt,
-    openai_api_key: get_or_raise.("OPENAI_API_KEY"),
-    anthropic_api_key: get_or_raise.("ANTHROPIC_API_KEY"),
-    google_api_key: get_or_raise.("GOOGLE_API_KEY")
+    openai_api_key: get_or_raise.("OPENAI_API_KEY")
+
+  # anthropic_api_key: get_or_raise.("ANTHROPIC_API_KEY"),
+  # google_api_key: get_or_raise.("GOOGLE_API_KEY")
 end
