@@ -55,9 +55,9 @@ config :chatgpt,
       name: "GPT4 32k (EXPENSIVE!) (OpenAI)"
     }
   ],
-  enable_google_oauth: false,
+  enable_google_oauth: true,
   restrict_email_domains: true,
-  allowed_email_domains: ["google.com"]
+  allowed_email_domains: ["incurator.io"]
 
 # Configures the endpoint
 config :chatgpt, ChatgptWeb.Endpoint,
