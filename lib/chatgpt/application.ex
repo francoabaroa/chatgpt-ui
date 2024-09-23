@@ -19,6 +19,7 @@ defmodule Chatgpt.Application do
       # Start a worker by calling: Chatgpt.Worker.start_link(arg)
       # {Chatgpt.Worker, arg},
       Chatgpt.Tokenizer
+      # TODO: only needed if using vertex?
       # {Goth, name: Chatgpt.Goth}
     ]
 
