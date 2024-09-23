@@ -51,8 +51,8 @@ if config_env() == :prod do
     System.get_env("SECRET_KEY_BASE") ||
       "1Tb5PGRi3gD8PTf702SFqWP7xlHlZwXeZgPcGFLVwFV+rOW+cHCP1yHlRqTJKT5z"
 
-  host = System.get_env("HOST") || "example.com"
-  port = String.to_integer(System.get_env("PORT") || "4000")
+  host = System.get_env("PHX_HOST") || "example.com"
+  port = String.to_integer(System.get_env("PORT") || "8080")
 
   config :chatgpt, ChatgptWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],

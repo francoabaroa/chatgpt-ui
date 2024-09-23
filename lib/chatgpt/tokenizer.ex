@@ -14,7 +14,7 @@ defmodule Chatgpt.Tokenizer do
     cache_dir = System.get_env("TOKENIZER_CACHE_DIR") || "/tmp/.cache/tokenizers_elixir"
     File.mkdir_p!(cache_dir)
 
-    case Tokenizers.Tokenizer.from_pretrained(@model) do
+    case Tokenizers.Tokenizer.from_pretrained(@model, cache_dir: cache_dir) do
       {:ok, tokenizer} -> {:ok, tokenizer}
       {:error, e} -> {:error, e}
     end
