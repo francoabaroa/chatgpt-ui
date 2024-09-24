@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" style="scrollbar-gutter: stable;" class="">
+<html lang="en" style="scrollbar-gutter: stable;" class="h-full">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -10,123 +10,119 @@
     <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
     <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
     </script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Roboto", sans-serif;
+      }
+    </style>
   </head>
-  <body class="">
-    <div class="drawer md:drawer-open">
+  <body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 h-full">
+    <div class="drawer lg:drawer-open h-full">
       <input id="my-drawer-2" type="checkbox" class="drawer-toggle" />
 
-      <div class="drawer-content z-50 md:z-20">
-        <div class="
-  sticky top-0 z-30 flex h-16 w-full justify-center backdrop-blur transition-all duration-100
-  text-base-content shadow-sm
-  ">
-          <header class="navbar">
-            <div class="navbar-center flex">
-              <div class="flex-none lg:block">
-                <div class="flex items-center">
-                  <span class="text-lg font-semibold">
-                    <%= "Chat" %>
-                  </span>
-                </div>
-                <%!-- <ul class="menu menu-horizontal">
-                  <li>
-                    <details>
-                      <summary>
-                        <%= for model <- @models do %>
-                          <option
-                            value={to_string(model.id)}
-                            selected={to_string(@model) == to_string(model.id)}
-                          >
-                            <%= model.name %>
-                          </option>
-                        <% end %>
-                      </summary>
-
-                      <ul class="p-2 z-10 bg-base-100">
-                        <%= for {model, name} <- Enum.map(assigns[:models], & {&1.id, &1.name}) do %>
-                          <li>
-                            <.link navigate={
-                              URI.parse(assigns.conn.request_path)
-                              |> URI.append_query("model=#{model}")
-                              |> URI.to_string()
-                            }>
-                              <%= name %>
-                            </.link>
-                          </li>
-                        <% end %>
-                      </ul>
-                    </details>
-                  </li>
-                </ul> --%>
-              </div>
+      <div class="drawer-content flex flex-col h-full">
+        <div class="sticky top-0 z-30 flex h-16 w-full justify-center backdrop-blur transition-all duration-100 text-base-content shadow-sm">
+          <header class="navbar bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 w-full">
+            <div class="flex-none lg:hidden">
+              <label for="my-drawer-2" class="btn btn-square btn-ghost">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  class="inline-block w-6 h-6 stroke-current"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M4 6h16M4 12h16M4 18h16"
+                  >
+                  </path>
+                </svg>
+              </label>
             </div>
+            <div class="flex-1 px-2 mx-2 text-2xl font-bold">Chat</div>
           </header>
         </div>
 
-        <div class="mx-6  ">
+        <div class="flex-grow overflow-y-auto p-6">
           <%= @inner_content %>
         </div>
       </div>
 
-      <div class="drawer-side z-40 bg-[#F9F9F9] dark:bg-[#171717]">
-        <label for="my-drawer-2" aria-label="close sidebar" class="drawer-overlay"></label>
-
-        <aside class="w-72 ">
-          <div class="navbar">
+      <div class="drawer-side">
+        <label for="my-drawer-2" class="drawer-overlay"></label>
+        <aside class="w-80 bg-white dark:bg-gray-800 shadow-lg flex flex-col h-full">
+          <div class="navbar sticky top-0 z-20 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
             <a href="/" class="btn btn-ghost normal-case text-xl">
               <%= assigns[:page_title] || Application.get_env(:chatgpt, :title) %>
             </a>
           </div>
 
-          <div class="h-4"></div>
-
-          <ul class="menu rounded-box">
-            <li class="">
-              <.link
-                class={Map.get(assigns, :mode, :chat) == :chat && "active"}
-                navigate={~p"/chat"}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke-width="1.5"
-                  stroke="currentColor"
-                  class="w-6 h-6"
+          <div class="overflow-y-auto flex-grow">
+            <ul class="menu p-4 w-full">
+              <li>
+                <.link
+                  class={Map.get(assigns, :mode, :chat) == :chat && "active"}
+                  navigate={~p"/chat"}
                 >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"
-                  />
-                </svg>
-                General Chat
-              </.link>
-            </li>
-            <li>
-              <div class="h-4"></div>
-              <h2 class="menu-title text-base-content font-semibold">Assistants</h2>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke-width="1.5"
+                    stroke="currentColor"
+                    class="w-6 h-6"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"
+                    />
+                  </svg>
+                  General Chat
+                </.link>
+              </li>
+              <li class="menu-title">
+                <h2 class="font-semibold mt-4">Assistants</h2>
+              </li>
               <%= for {category, scenarios} <- Enum.group_by(scenarios(assigns), & &1.category) |> Enum.sort() do %>
-                <ul>
-                  <li class="menu-title font-medium text-gray-700 dark:text-gray-300 underline">
+                <li class="menu-title">
+                  <span class="font-medium text-gray-700 dark:text-gray-300 mt-2">
                     <%= Phoenix.Naming.humanize(category) %>
+                  </span>
+                </li>
+                <%= for scenario <- Enum.sort_by(scenarios, & &1.name) do %>
+                  <li>
+                    <.link
+                      class={"#{active_scenario(Map.get(assigns, :scenario, nil), scenario)}"}
+                      navigate={~p"/assistant/#{scenario.id}"}
+                    >
+                      <%= scenario.name %>
+                    </.link>
                   </li>
-                  <%= for scenario <- Enum.sort_by(scenarios, & &1.name) do %>
-                    <li>
-                      <.link
-                        class={"#{active_scenario(Map.get(assigns, :scenario, nil), scenario)}"}
-                        navigate={~p"/assistant/#{scenario.id}"}
-                      >
-                        <%= scenario.name %>
-                      </.link>
-                    </li>
-                  <% end %>
-                </ul>
+                <% end %>
               <% end %>
-            </li>
-          </ul>
+            </ul>
+          </div>
         </aside>
       </div>
+    </div>
+    <div
+      class="fixed top-0 left-0 right-0 bottom-0 w-full h-screen z-50 overflow-hidden bg-gray-700 opacity-75 flex flex-col items-center justify-center"
+      id="loading-indicator"
+      style="display: none;"
+    >
+      <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4">
+      </div>
+      <h2 class="text-center text-white text-xl font-semibold">Loading...</h2>
+      <p class="w-1/3 text-center text-white">
+        This may take a few seconds, please don't close this page.
+      </p>
     </div>
   </body>
 </html>
