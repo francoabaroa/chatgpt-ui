@@ -81,10 +81,41 @@ defmodule ChatgptWeb.MessageComponent do
   attr :sender, :string, required: true
 
   # defp parse_content(content), do: Earmark.as_html!(content)
-  defp parse_content(content), do: content
 
-  def render(assigns) do
-    assigns = assign(assigns, :parsed_content, process_markdown(assigns.message))
+  # Function clause for when message is a struct
+  def render(%{message: %Chatgpt.Message{} = message} = assigns) do
+    assigns = assign(assigns, :parsed_content, process_markdown(message.content))
+
+    ~H"""
+    <div class={"chat #{style(message.sender)}"}>
+      <div class="chat-image avatar">
+        <div class="w-10">
+          <%= render_avatar(assigns) %>
+        </div>
+      </div>
+      <div class={"chat-bubble shadow-[0_0_10px_rgba(0,0,0,0.10)] dark:shadow-[0_0_15px_rgba(0,0,0,0.10)] space-y-4 p-4 mb-4 rounded  w-full #{bubble_style(message.sender)}"}>
+        <div class="message-content">
+          <%= raw(@parsed_content) %>
+        </div>
+        <button
+          id={"copy-button-#{message.id}"}
+          class="copy-button"
+          phx-hook="CopyMessage"
+          data-content={message.content}
+          title="Copy to clipboard"
+        >
+          📋
+        </button>
+      </div>
+    </div>
+    """
+  end
+
+  # Fallback function clause for when message is a string
+  def render(%{message: message} = assigns) when is_binary(message) do
+    assigns = assign(assigns, :parsed_content, process_markdown(message))
+    assigns = assign(assigns, :message_id, assigns[:id] || "unknown-id")
+    assigns = assign(assigns, :sender, assigns[:sender] || :assistant)
 
     ~H"""
     <div class={"chat #{style(@sender)}"}>
@@ -94,7 +125,18 @@ defmodule ChatgptWeb.MessageComponent do
         </div>
       </div>
       <div class={"chat-bubble shadow-[0_0_10px_rgba(0,0,0,0.10)] dark:shadow-[0_0_15px_rgba(0,0,0,0.10)] space-y-4 p-4 mb-4 rounded  w-full #{bubble_style(@sender)}"}>
-        <%= raw(@parsed_content) %>
+        <div class="message-content">
+          <%= raw(@parsed_content) %>
+        </div>
+        <button
+          id={"copy-button-#{@message_id}"}
+          class="copy-button"
+          phx-hook="CopyMessage"
+          data-content={message}
+          title="Copy to clipboard"
+        >
+          📋
+        </button>
       </div>
     </div>
     """

@@ -3,27 +3,48 @@ defmodule ChatgptWeb.IndexLive do
   alias ChatgptWeb.LoadingIndicatorComponent
   alias ChatgptWeb.AlertComponent
   use ChatgptWeb, :live_view
+  require Logger
 
-  @type state :: %{messages: [Message.t()], loading: boolean(), streaming_message: Message.t()}
+  @type state :: %{
+          messages: [Message.t()],
+          loading: boolean(),
+          streaming_message: Message.t(),
+          copied_message_id: String.t() | nil
+        }
+
+  defp generate_id() do
+    :erlang.unique_integer([:positive]) |> to_string()
+  end
 
   @spec dummy_messages() :: [Message.t()]
-  defp dummy_messages,
-    do: [
-      %Message{content: "Hi there! How can I assist you today?", sender: :assistant, id: 0}
+  defp dummy_messages do
+    [
+      %Chatgpt.Message{
+        content: "Hi there! How can I assist you today?",
+        sender: :assistant,
+        id: generate_id()
+      }
     ]
+  end
 
   @spec initial_state() :: state
-  defp initial_state,
-    do: %{
+  defp initial_state do
+    %{
       dummy_messages: dummy_messages() |> fill_random_id(),
       prepend_messages: [],
       messages: [],
       loading: false,
-      streaming_message: %Message{content: "", sender: :assistant, id: -1}
+      streaming_message: %Message{content: "", sender: :assistant, id: -1},
+      # Initialize copied_message_id here
+      copied_message_id: nil
     }
+  end
 
-  defp fill_random_id(messages),
-    do: Enum.map(messages, fn msg -> Map.put(msg, :id, :rand.uniform() |> Float.to_string()) end)
+  defp fill_random_id(messages) do
+    Enum.map(messages, fn msg ->
+      Map.put(msg, :id, :erlang.unique_integer([:positive]) |> to_string())
+    end)
+  end
 
   defp to_atom(s) when is_atom(s), do: s
   defp to_atom(s) when is_binary(s), do: String.to_atom(s)
@@ -33,8 +54,12 @@ defmodule ChatgptWeb.IndexLive do
 
   def mount(
         _params,
-        %{"model" => model, "models" => models, "mode" => :scenario, "scenario" => scenario} =
-          session,
+        %{
+          "model" => model,
+          "models" => models,
+          "mode" => :scenario,
+          "scenario" => scenario
+        } = session,
         socket
       ) do
     {:ok, pid} = Chatgpt.MessageStore.start_link([])
@@ -52,14 +77,15 @@ defmodule ChatgptWeb.IndexLive do
      socket
      |> assign(initial_state())
      |> assign(%{
-       #  openai_pid: pid,
        message_store_pid: pid,
        prepend_messages: scenario.messages,
-       dummy_messages:
-         [
-           %Chatgpt.Message{content: scenario.description, sender: :assistant, id: 0}
-         ]
-         |> fill_random_id(),
+       dummy_messages: [
+         %Chatgpt.Message{
+           content: scenario.description,
+           sender: :assistant,
+           id: generate_id()
+         }
+       ],
        model: selected_model,
        models: models,
        active_model: Enum.find(models, &(&1.id == to_atom(selected_model))),
@@ -70,13 +96,12 @@ defmodule ChatgptWeb.IndexLive do
   end
 
   def mount(_params, %{"model" => model, "models" => models} = session, socket) do
-    # {:ok, pid} = Chatgpt.Openai.start_link(%{})
     {:ok, pid} = Chatgpt.MessageStore.start_link([])
 
     {:ok,
      socket
+     |> assign(initial_state())
      |> assign(%{
-       #  openai_pid: pid,
        model: model,
        message_store_pid: pid,
        dummy_messages: dummy_messages() |> fill_random_id(),
@@ -84,15 +109,13 @@ defmodule ChatgptWeb.IndexLive do
        models: models,
        scenarios: Map.get(session, "scenarios"),
        mode: :chat
-     })
-     |> assign(initial_state())}
+     })}
   end
 
-  def handle_event(ev, params, socket) do
-    IO.puts("handle event")
-    IO.inspect(ev)
-    IO.inspect(params)
-    IO.inspect(socket)
+  # Catch-all handler for any other events
+  @impl true
+  def handle_event(_event, _params, socket) do
+    {:noreply, socket}
   end
 
   def handle_info({:set_error, msg}, socket) do
@@ -152,6 +175,7 @@ defmodule ChatgptWeb.IndexLive do
     })
 
     Process.send(self(), :stop_loading, [])
+
     Process.send(self(), :sync_messages, [])
 
     {:noreply,
@@ -174,7 +198,7 @@ defmodule ChatgptWeb.IndexLive do
     {:noreply, assign(socket, %{loading: true})}
   end
 
-  # message when loading should not get processed
+  # Message when loading should not get processed
   def handle_info({:msg_submit, text}, %{assigns: %{loading: true}} = socket) do
     {:noreply, socket}
   end
@@ -187,20 +211,21 @@ defmodule ChatgptWeb.IndexLive do
 
     model = Map.get(socket.assigns, :model)
 
-    # add new message to messagestore
+    # Add new message to message_store
     Chatgpt.MessageStore.add_message(socket.assigns.message_store_pid, %Chatgpt.Message{
       content: text,
-      sender: :user
+      sender: :user,
+      id: Chatgpt.MessageStore.get_next_id(socket.assigns.message_store_pid)
     })
 
     Process.send(self, :sync_messages, [])
 
     handle_chunk_callback = fn
-      # callback for stream finished
+      # Callback for stream finished
       :finish ->
         Process.send(self, :commit_streaming_message, [])
 
-      # callback for delta data
+      # Callback for delta data
       {:data, data} ->
         Process.send(self, {:handle_stream_chunk, data}, [])
 
@@ -233,6 +258,21 @@ defmodule ChatgptWeb.IndexLive do
     {:noreply, socket |> assign(:loading, true) |> clear_flash()}
   end
 
+  @impl true
+  def handle_info({:reset_copied, message_id}, socket) do
+    if socket.assigns.copied_message_id == message_id do
+      {:noreply, assign(socket, :copied_message_id, nil)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  defp schedule_copied_reset(socket, message_id) do
+    Process.send_after(self(), {:reset_copied, message_id}, 2000)
+    socket
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <div
@@ -246,6 +286,7 @@ defmodule ChatgptWeb.IndexLive do
             module={ChatgptWeb.MessageListComponent}
             messages={assigns.dummy_messages ++ assigns.messages ++ [assigns.streaming_message]}
             id="myid"
+            copied_message_id={@copied_message_id}
           />
 
           <%= if Phoenix.Flash.get(@flash, :error) do %>
@@ -254,7 +295,7 @@ defmodule ChatgptWeb.IndexLive do
             </div>
           <% end %>
 
-          <%= if true == @loading do %>
+          <%= if @loading == true do %>
             <div class="container mx-auto p-4">
               <LoadingIndicatorComponent.render />
             </div>

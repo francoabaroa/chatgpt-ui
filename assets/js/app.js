@@ -40,6 +40,43 @@ function scrollToLastChatBubble() {
 
 let Hooks = {};
 
+Hooks.CopyMessage = {
+	mounted() {
+		this.el.addEventListener("click", () => {
+			const content = this.el.getAttribute("data-content");
+			if (content) {
+				navigator.clipboard.writeText(content)
+					.then(() => {
+						this.el.innerText = "✅";
+						setTimeout(() => {
+							this.el.innerText = "📋";
+						}, 2000);
+					})
+					.catch((err) => {
+						console.error("Could not copy text: ", err);
+						// Fallback mechanism for unsupported browsers
+						let textarea = document.createElement("textarea");
+						textarea.value = content;
+						document.body.appendChild(textarea);
+						textarea.select();
+						try {
+							document.execCommand("copy");
+							this.el.innerText = "✅";
+							setTimeout(() => {
+								this.el.innerText = "📋";
+							}, 2000);
+						} catch (fallbackError) {
+							console.error("Could not copy text via fallback:", fallbackError);
+						}
+						document.body.removeChild(textarea);
+					});
+			} else {
+				console.warn("No content to copy.");
+			}
+		});
+	},
+};
+
 let csrfToken = document
 	.querySelector("meta[name='csrf-token']")
 	.getAttribute("content");
