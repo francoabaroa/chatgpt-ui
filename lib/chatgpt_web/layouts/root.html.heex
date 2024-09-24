@@ -108,7 +108,7 @@
               <h2 class="menu-title text-base-content font-semibold">Assistants</h2>
               <%= for {category, scenarios} <- Enum.group_by(scenarios(assigns), & &1.category) |> Enum.sort() do %>
                 <ul>
-                  <li class="menu-title text-base font-medium text-gray-700 dark:text-gray-300 underline">
+                  <li class="menu-title font-medium text-gray-700 dark:text-gray-300 underline">
                     <%= Phoenix.Naming.humanize(category) %>
                   </li>
                   <%= for scenario <- Enum.sort_by(scenarios, & &1.name) do %>
