@@ -7,17 +7,10 @@
 
 .copy-button {
   background: none;
-  border: none;
   cursor: pointer;
   font-size: 1.2em;
   margin-left: 0.5em;
   vertical-align: middle;
-  opacity: 0.6;
-  transition: opacity 0.2s ease-in-out;
-}
-
-.copy-button:hover {
-  opacity: 1;
 }
 
 .chat-bubble {
