@@ -1,0 +1,23 @@
+- Download convo or save message to file
+- Chat text box in mobile hidden at first, need to scroll down
+- Add vertex, Anthropic
+- Add model router for right task and cheapness
+- Add artifacts? v0?
+- "Bad request" if access /auth/google, add fallback 404 page with link to home or re-route a bad request to home
+- Add warning of messages not persisting
+- Per user API key to track usage
+- EMAIL STUFF
+- Persistence or saving in case of refresh
+- Add logo
+- Add Speech to text and text to speech
+- Implement pdf2audio with necessary tweaks
+- Add integrations (tools, web, scraping, workflows, lindy, agents, exa, talivy, etc)
+- RAG assistants and RAG docs, don't exist? Create prompts on the fly to create new assistant.
+- Search for assistant using RAG or whatever
+- Add reasoning
+- Add ability to write files
+- Search specific files
+- Add search 1 document and ask questions or get an updated version
+- Goth?
+- Drive Labels API for what?
+- Brand guidelines

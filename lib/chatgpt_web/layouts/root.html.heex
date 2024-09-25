@@ -48,6 +48,11 @@
             <div class="flex-1 px-2 mx-2 text-2xl font-bold">Chat</div>
           </header>
         </div>
+        <!-- Add the warning banner here -->
+        <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4" role="alert">
+          <p class="font-bold">Attention:</p>
+          <p>If you refresh the page, you will lose the message history.</p>
+        </div>
 
         <div class="flex-grow overflow-y-auto p-6">
           <%= @inner_content %>
