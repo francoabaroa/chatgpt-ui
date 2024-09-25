@@ -77,22 +77,6 @@ defmodule ChatgptWeb.PageController do
     render_page(conn, params, %{} |> Map.put("mode", :scenario) |> Map.put("scenario", scenario))
   end
 
-  def list_drive_files(conn, _params) do
-    protect_with_session(conn, _params, fn ->
-      access_token = get_session(conn, "access_token")
-
-      case Chatgpt.Drive.list_files(access_token) do
-        {:ok, files} ->
-          render(conn, :drive_files, files: files)
-
-        {:error, reason} ->
-          conn
-          |> put_flash(:error, "Failed to fetch Drive files: #{inspect(reason)}")
-          |> redirect(to: "/")
-      end
-    end)
-  end
-
   def drive_files(conn, _params) do
     protect_with_session(conn, _params, fn ->
       access_token = get_session(conn, "access_token")

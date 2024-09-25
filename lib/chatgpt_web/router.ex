@@ -31,7 +31,6 @@ defmodule ChatgptWeb.Router do
       get "/", PageController, :chat
       get "/chat", PageController, :chat
       get "/assistant/:scenario_id", PageController, :scenario
-      get "/list-drive-files", PageController, :list_drive_files
       get "/drive_files", PageController, :drive_files
     end
   end
