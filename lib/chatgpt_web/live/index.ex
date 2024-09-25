@@ -277,7 +277,7 @@ defmodule ChatgptWeb.IndexLive do
     ~H"""
     <div
       id="chatgpt"
-      class="flex overflow-scroll"
+      class="flex overflow-scroll bg-gray-50 dark:bg-gray-900"
       style="height: calc(100vh - 64px); flex-direction: column;"
     >
       <div class="mb-32" style="flex-grow: 1;">

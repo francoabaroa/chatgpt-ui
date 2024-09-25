@@ -15,14 +15,25 @@ defmodule ChatgptWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :require_authenticated_user do
+    plug :ensure_authenticated_user
+  end
+
   scope "/", ChatgptWeb do
     pipe_through :browser
 
-    get "/", PageController, :chat
-    get "/chat", PageController, :chat
-    get "/assistant/:scenario_id", PageController, :scenario
+    get "/auth/google", AuthController, :oauth
+    get "/auth/google/callback", AuthController, :oauth_callback
 
-    get "/auth/google/callback", PageController, :oauth_callback
+    scope "/" do
+      pipe_through :require_authenticated_user
+
+      get "/", PageController, :chat
+      get "/chat", PageController, :chat
+      get "/assistant/:scenario_id", PageController, :scenario
+      get "/list-drive-files", PageController, :list_drive_files
+      get "/drive_files", PageController, :drive_files
+    end
   end
 
   # Other scopes may use custom stacks.
@@ -43,6 +54,16 @@ defmodule ChatgptWeb.Router do
       pipe_through :browser
 
       live_dashboard "/dashboard", metrics: ChatgptWeb.Telemetry
+    end
+  end
+
+  defp ensure_authenticated_user(conn, _opts) do
+    if get_session(conn, "access_token") do
+      conn
+    else
+      conn
+      |> redirect(to: "/auth/google")
+      |> halt()
     end
   end
 end

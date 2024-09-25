@@ -2,18 +2,22 @@ defmodule ChatgptWeb.PageController do
   use ChatgptWeb, :controller
 
   defp protect_with_session(conn, _params, fx) do
-    case get_session(conn) do
-      %{"oauth_google_token" => _token, "oauth_expiration" => expiration} ->
-        if DateTime.compare(DateTime.now!("Etc/UTC"), expiration) == :gt do
-          oauth_google_url = ElixirAuthGoogle.generate_oauth_url(conn)
-          redirect(conn, external: oauth_google_url)
-        else
-          fx.()
-        end
+    access_token = get_session(conn, "access_token")
+    oauth_expiration = get_session(conn, "oauth_expiration")
 
-      _ ->
+    cond do
+      is_nil(access_token) or is_nil(oauth_expiration) ->
+        scopes = Application.get_env(:elixir_auth_google, :scopes)
         oauth_google_url = ElixirAuthGoogle.generate_oauth_url(conn)
         redirect(conn, external: oauth_google_url)
+
+      DateTime.compare(DateTime.utc_now(), oauth_expiration) == :gt ->
+        scopes = Application.get_env(:elixir_auth_google, :scopes)
+        oauth_google_url = ElixirAuthGoogle.generate_oauth_url(conn)
+        redirect(conn, external: oauth_google_url)
+
+      true ->
+        fx.()
     end
   end
 
@@ -73,41 +77,35 @@ defmodule ChatgptWeb.PageController do
     render_page(conn, params, %{} |> Map.put("mode", :scenario) |> Map.put("scenario", scenario))
   end
 
-  def oauth_callback(conn, %{"code" => code}) do
-    with {:ok, token} <- ElixirAuthGoogle.get_token(code, conn),
-         %{access_token: access_token} <- token,
-         {:ok, profile} <- ElixirAuthGoogle.get_user_profile(access_token),
-         %{email: email} <- profile,
-         %{expires_in: expires_in} <- token,
-         restrict_email_domains? <-
-           Application.get_env(:chatgpt, :restrict_email_domains, false),
-         allowed_email_domains <-
-           Application.get_env(:chatgpt, :allowed_email_domains, []) do
-      cond do
-        # restrict_email_domains set, and domain is found
-        restrict_email_domains? and
-            Enum.find(allowed_email_domains, &String.contains?(email, &1)) == nil ->
-          {:error, "email not allowed"}
+  def list_drive_files(conn, _params) do
+    protect_with_session(conn, _params, fn ->
+      access_token = get_session(conn, "access_token")
 
-        true ->
-          :ok
-      end
-      |> case do
-        :ok ->
-          expiry_datetime = DateTime.add(DateTime.now!("Etc/UTC"), expires_in, :second)
+      case Chatgpt.Drive.list_files(access_token) do
+        {:ok, files} ->
+          render(conn, :drive_files, files: files)
 
+        {:error, reason} ->
           conn
-          |> put_session("oauth_google_token", token)
-          |> put_session("oauth_expiration", expiry_datetime)
-          |> put_session("google_profile", profile)
+          |> put_flash(:error, "Failed to fetch Drive files: #{inspect(reason)}")
           |> redirect(to: "/")
-
-        {:error, msg} ->
-          text(conn, "authorization failed: #{msg}")
       end
-    else
-      err ->
-        text(conn, "authorization failed: #{inspect(err)}")
-    end
+    end)
+  end
+
+  def drive_files(conn, _params) do
+    protect_with_session(conn, _params, fn ->
+      access_token = get_session(conn, "access_token")
+
+      case Chatgpt.Drive.list_files(access_token) do
+        {:ok, files} ->
+          render(conn, :drive_files, files: files)
+
+        {:error, reason} ->
+          conn
+          |> put_flash(:error, "Failed to fetch Drive files: #{inspect(reason)}")
+          |> redirect(to: "/")
+      end
+    end)
   end
 end

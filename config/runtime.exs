@@ -27,9 +27,21 @@ config :ex_openai,
   organization_key: get_or_raise.("OPENAI_ORGANIZATION_KEY"),
   http_options: [recv_timeout: 30_000]
 
+get_env_or_raise = fn key ->
+  System.get_env(key) ||
+    raise "Environment variable #{key} is not set. Please set it in your environment or .env file."
+end
+
 config :elixir_auth_google,
-  client_id: System.get_env("GOOGLE_AUTH_CLIENT_ID"),
-  client_secret: System.get_env("GOOGLE_AUTH_CLIENT_SECRET")
+  client_id: get_env_or_raise.("GOOGLE_AUTH_CLIENT_ID"),
+  client_secret: get_env_or_raise.("GOOGLE_AUTH_CLIENT_SECRET"),
+  redirect_uri: get_env_or_raise.("GOOGLE_AUTH_REDIRECT_URI"),
+  scopes: [
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
+    "openid",
+    "https://www.googleapis.com/auth/drive.readonly"
+  ]
 
 config :chatgpt,
   access_key_id: System.get_env("AWS_ACCESS_KEY_ID"),

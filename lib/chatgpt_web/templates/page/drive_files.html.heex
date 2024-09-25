@@ -1,0 +1,11 @@
+<h1>My Google Drive Files</h1>
+
+<ul>
+  <%= for file <- @files do %>
+    <li>
+      <strong><%= file.name %></strong>
+      <p>Type: <%= file.mimeType %></p>
+      <p>Modified: <%= file.modifiedTime %></p>
+    </li>
+  <% end %>
+</ul>

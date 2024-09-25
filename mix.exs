@@ -69,6 +69,7 @@ defmodule Chatgpt.MixProject do
       {:finch, "~> 0.16"},
       {:tesla, "~> 1.4"},
       {:goth, "~> 1.4"},
+      {:google_api_drive, "~> 0.30.1"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:dotenv, "~> 3.0.0", only: [:dev, :test]}

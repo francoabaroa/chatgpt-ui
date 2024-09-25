@@ -9,7 +9,6 @@ import Config
 
 config :chatgpt,
   title: "Incurator Internal",
-  # or gpt-3.5-turbo
   default_model: :"gpt-4o-mini",
   models: [
     %{
@@ -98,6 +97,11 @@ config :logger, :console,
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
+
+# Configure Goth
+# config :goth,
+#   json: {:system, "GOOGLE_APPLICATION_CREDENTIALS_JSON"},
+#   disabled: {:system, "GOOGLE_APPLICATION_CREDENTIALS_JSON"} == nil
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

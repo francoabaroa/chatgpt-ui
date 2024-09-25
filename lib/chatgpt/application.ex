@@ -7,6 +7,8 @@ defmodule Chatgpt.Application do
 
   @impl true
   def start(_type, _args) do
+    verify_oauth_config()
+
     children = [
       # Start the Telemetry supervisor
       ChatgptWeb.Telemetry,
@@ -14,6 +16,8 @@ defmodule Chatgpt.Application do
       {Phoenix.PubSub, name: Chatgpt.PubSub},
       # Start Finch
       {Finch, name: Chatgpt.Finch},
+      # Start your ETS Session Manager before the Endpoint
+      Chatgpt.Ets.SessionIdManager,
       # Start the Endpoint (http/https)
       ChatgptWeb.Endpoint,
       # Start a worker by calling: Chatgpt.Worker.start_link(arg)
@@ -27,6 +31,24 @@ defmodule Chatgpt.Application do
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Chatgpt.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  defp verify_oauth_config do
+    required_configs = [
+      :client_id,
+      :client_secret,
+      :redirect_uri
+    ]
+
+    Enum.each(required_configs, fn config ->
+      unless Application.get_env(:elixir_auth_google, config) do
+        raise "Missing required configuration: :elixir_auth_google, :#{config}"
+      end
+    end)
+
+    unless Application.get_env(:elixir_auth_google, :scopes) do
+      Logger.warning("No scopes configured for :elixir_auth_google. Using default scopes.")
+    end
   end
 
   # Tell Phoenix to update the endpoint configuration
