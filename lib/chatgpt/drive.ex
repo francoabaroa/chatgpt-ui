@@ -6,7 +6,7 @@ defmodule Chatgpt.Drive do
     conn = Connection.new(token)
 
     params = [
-      pageSize: 100,
+      pageSize: 1000,
       fields: "files(id,name,mimeType,modifiedTime)"
     ]
 
