@@ -71,24 +71,16 @@ defmodule ChatgptWeb.AuthController do
   end
 
   defp handle_successful_token_response(conn, body) do
-    Logger.info("Token response received: #{inspect(body)}")
-
     with {:ok, token_data} <- Jason.decode(body),
          {:ok, access_token} <- fetch_value(token_data, "access_token") do
-      Logger.info("Token data received: #{inspect(token_data)}")
-
       case ElixirAuthGoogle.get_user_profile(access_token) do
         {:ok, profile} ->
-          Logger.info("User profile received: #{inspect(profile)}")
-          Logger.info("User profile received: #{inspect(profile[:email])}")
-
           case profile[:email] do
             nil ->
               Logger.error("Failed to extract email: email is missing")
               text(conn, "Authorization failed: Unable to extract email from profile")
 
             email ->
-              Logger.info("Email extracted: #{email}")
               expires_in = token_data["expires_in"] || 3600
               expiry_datetime = DateTime.add(DateTime.utc_now(), expires_in, :second)
 

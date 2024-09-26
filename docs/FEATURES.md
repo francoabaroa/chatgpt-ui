@@ -1,3 +1,4 @@
+- When refreshing a page and need to auth back in, it takes you back to home instead of the link before you authed.
 - Download convo or save message to file
 - Chat text box in mobile hidden at first, need to scroll down
 - Add vertex, Anthropic

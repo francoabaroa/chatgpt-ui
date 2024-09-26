@@ -32,6 +32,7 @@ defmodule Chatgpt.OpenAI2 do
       :finish ->
         IO.puts("Done")
         callback.(:finish)
+        IO.puts("Completed with model: #{model}")
 
       {:data, %ExOpenAI.Components.CreateChatCompletionResponse{choices: choices}} ->
         chunk_text =

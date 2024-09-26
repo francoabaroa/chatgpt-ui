@@ -9,7 +9,7 @@ import Config
 
 config :chatgpt,
   title: "Incurator Internal",
-  default_model: :"gpt-4o-mini",
+  default_model: :"gpt-4o",
   models: [
     %{
       id: :"anthropic.claude-3-sonnet-20240229-v1:0",
@@ -22,6 +22,12 @@ config :chatgpt,
       provider: :google,
       truncate_tokens: 100_000,
       name: "Gemini Pro (Google)"
+    },
+    %{
+      id: :"o1-mini",
+      provider: :openai,
+      truncate_tokens: 128_000,
+      name: "o1-mini (OpenAI)"
     },
     %{
       id: :"gpt-4o",
