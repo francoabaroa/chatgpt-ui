@@ -32,6 +32,7 @@ defmodule ChatgptWeb.TextboxComponent do
   attr :text, :string
   attr :myself, :any
   attr :disabled, :boolean
+  attr :selected_files, :list, default: []
 
   def textarea(assigns) do
     assigns =
@@ -57,10 +58,33 @@ defmodule ChatgptWeb.TextboxComponent do
 
   attr :on_submit, :any, required: true
   attr :disabled, :boolean, required: true
+  attr :selected_files, :list, default: []
 
   def render(assigns) do
     ~H"""
     <div class="message-composer">
+      <!-- Display selected files -->
+      <div class="selected-files flex flex-wrap mb-2">
+        <%= for file <- @selected_files do %>
+          <div class="file-badge flex items-center mr-2 mb-2 bg-gray-200 rounded px-2 py-1 relative group">
+            <span class="file-name mr-1" title={preview_content(file.content)}>
+              <%= file.name %>
+            </span>
+            <button
+              type="button"
+              phx-click="remove_selected_file"
+              phx-value-file-id={file.id}
+              class="remove-file text-red-500 hover:text-red-700"
+            >
+              &times;
+            </button>
+            <div class="preview-popup absolute left-0 top-full mt-2 p-2 bg-white border rounded shadow-lg hidden group-hover:block z-10">
+              <p class="text-sm"><%= preview_content(file.content) %></p>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
       <p><%= @text %></p>
       <.form
         class="stretch mx-2 flex flex-row gap-3 last:mb-2 md:mx-4 md:last:mb-6 lg:mx-auto lg:max-w-3xl"
@@ -94,5 +118,13 @@ defmodule ChatgptWeb.TextboxComponent do
       </.form>
     </div>
     """
+  end
+
+  defp preview_content(content) do
+    content
+    |> String.split(~r/\s+/)
+    |> Enum.take(30)
+    |> Enum.join(" ")
+    |> Kernel.<>("...")
   end
 end

@@ -1,6 +1,7 @@
 - delete search hist
 - when you add multiple files, they get added dupklicated
 - breaks when add 3 financial model sheeets (nothing gets pasted)
+- show more of user message (expand collapse)
 - truncating file message content ... (or handle it like Anthropic. a paste file)
 
 Error Handling: Provide user feedback in case of errors or exceptions. let them submit error report

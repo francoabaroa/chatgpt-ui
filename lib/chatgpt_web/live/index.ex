@@ -38,7 +38,8 @@ defmodule ChatgptWeb.IndexLive do
       copied_message_id: nil,
       show_drive_search_modal: false,
       drive_search_results: [],
-      drive_search_query: ""
+      drive_search_query: "",
+      selected_files: []
     }
   end
 
@@ -171,11 +172,12 @@ defmodule ChatgptWeb.IndexLive do
   def handle_event("add_selected_files", %{"selected_files" => selected_file_ids}, socket) do
     token = socket.assigns.access_token
 
+    # Fetch file info and store in selected_files
     files_with_content =
       Enum.map(selected_file_ids, fn file_id ->
         case Chatgpt.Drive.get_file_info_and_content(token, file_id) do
           {:ok, file, content} ->
-            %{file: file, content: content}
+            %{id: file.id, name: file.name, content: content}
 
           {:error, reason} ->
             Logger.error(
@@ -192,19 +194,11 @@ defmodule ChatgptWeb.IndexLive do
        socket
        |> put_flash(:error, "Failed to retrieve content for the selected files.")}
     else
-      # Combine all file contents into a single message
-      combined_message =
-        Enum.map_join(files_with_content, "\n\n", fn %{file: file, content: content} ->
-          "#{file.name}:\n\n#{content}"
-        end)
-
-      # Send the combined message to the textbox
-      send_update(ChatgptWeb.TextboxComponent, id: "textbox", append_text: combined_message)
-
       {:noreply,
        socket
+       |> assign(selected_files: socket.assigns.selected_files ++ files_with_content)
        |> assign(show_drive_search_modal: false)
-       |> put_flash(:info, "Added #{length(files_with_content)} file(s) to the textbox")}
+       |> put_flash(:info, "Added #{length(files_with_content)} file(s) to your message")}
     end
   end
 
@@ -224,9 +218,9 @@ defmodule ChatgptWeb.IndexLive do
   end
 
   @impl true
-  def handle_event(event, _params, socket) do
-    IO.puts("Unhandled event: #{inspect(event)}")
-    {:noreply, socket}
+  def handle_event("remove_selected_file", %{"file-id" => file_id}, socket) do
+    updated_files = Enum.reject(socket.assigns.selected_files, fn file -> file.id == file_id end)
+    {:noreply, assign(socket, selected_files: updated_files)}
   end
 
   def handle_info({:set_error, msg}, socket) do
@@ -322,9 +316,12 @@ defmodule ChatgptWeb.IndexLive do
 
     model = Map.get(socket.assigns, :model)
 
+    # Append selected file contents to the message
+    full_message = text <> append_selected_files_content(socket.assigns.selected_files)
+
     # Add new message to message_store
     Chatgpt.MessageStore.add_message(socket.assigns.message_store_pid, %Chatgpt.Message{
-      content: text,
+      content: full_message,
       sender: :user,
       id: Chatgpt.MessageStore.get_next_id(socket.assigns.message_store_pid)
     })
@@ -366,7 +363,17 @@ defmodule ChatgptWeb.IndexLive do
     llm = Chatgpt.LLM.get_provider(socket.assigns.active_model.provider)
     llm.do_complete(messages, model, handle_chunk_callback)
 
-    {:noreply, socket |> assign(:loading, true) |> clear_flash()}
+    {:noreply, socket |> assign(:loading, true) |> assign(:selected_files, []) |> clear_flash()}
+  end
+
+  # Helper function to append selected file contents
+  defp append_selected_files_content(selected_files) do
+    selected_files
+    |> Enum.map(fn file ->
+      tag_name = file.name |> String.replace(~r/[^a-zA-Z0-9]+/, "_") |> String.downcase()
+      "\n\n<#{tag_name}>\n#{file.content}\n</#{tag_name}>"
+    end)
+    |> Enum.join("\n")
   end
 
   @impl true
@@ -435,6 +442,11 @@ defmodule ChatgptWeb.IndexLive do
           module={ChatgptWeb.TextboxComponent}
           disabled={@loading}
           id="textbox"
+          selected_files={@selected_files}
+          #
+          Add
+          this
+          line
         />
       </div>
       <!-- Drive search modal -->
