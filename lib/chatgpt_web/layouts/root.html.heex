@@ -45,7 +45,13 @@
                 </svg>
               </label>
             </div>
-            <div class="flex-1 px-2 mx-2 text-2xl font-bold">Chat</div>
+            <div class="flex-1 px-2 mx-2 text-xl font-bold">
+              <%= if assigns[:scenario] do %>
+                <%= @scenario.name %>
+              <% else %>
+                Chat
+              <% end %>
+            </div>
           </header>
         </div>
         <!-- Warning banner -->

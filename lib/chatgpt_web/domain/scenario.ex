@@ -16,9 +16,23 @@ defmodule ChatgptWeb.Scenario do
   def default_scenarios() do
     [
       # Original scenarios
+      # %{
+      #   id: "marketing-plan-creator",
+      #   name: "📈 Marketing Plan Creator",
+      #   description: "I will help you develop a detailed marketing plan.",
+      #   messages: [
+      #     %Chatgpt.Message{
+      #       content:
+      #         "You are an AI assistant specialized in creating marketing plans. When the user provides details about their product or service, you should generate a comprehensive marketing plan that includes market research, target market identification, positioning, marketing strategies, budget allocation, and success metrics. Do not engage in conversation; focus on creating the marketing plan.",
+      #       sender: :system
+      #     }
+      #   ],
+      #   keep_context: true,
+      #   category: :marketing
+      # },
       %{
-        id: "marketing-plan-creator-for-incurator",
-        name: "📝 Marketing Plan Creator for Incurator",
+        id: "marketing-plan-creator",
+        name: "📝 Marketing Plan Creator",
         description:
           "I will help you create a comprehensive and impactful marketing plan for Incurator's launch.",
         messages: [
@@ -28,7 +42,7 @@ defmodule ChatgptWeb.Scenario do
           }
         ],
         keep_context: true,
-        category: :a_marketing_asst_for_poli
+        category: :marketing
       },
       %{
         id: "grammar-checker",
@@ -57,20 +71,6 @@ defmodule ChatgptWeb.Scenario do
         ],
         keep_context: true,
         category: :business
-      },
-      %{
-        id: "marketing-plan-creator",
-        name: "📈 Marketing Plan Creator",
-        description: "I will help you develop a detailed marketing plan.",
-        messages: [
-          %Chatgpt.Message{
-            content:
-              "You are an AI assistant specialized in creating marketing plans. When the user provides details about their product or service, you should generate a comprehensive marketing plan that includes market research, target market identification, positioning, marketing strategies, budget allocation, and success metrics. Do not engage in conversation; focus on creating the marketing plan.",
-            sender: :system
-          }
-        ],
-        keep_context: true,
-        category: :marketing
       },
       %{
         id: "product-spec-writer",
