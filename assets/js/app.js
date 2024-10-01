@@ -105,3 +105,10 @@ window.addEventListener(`phx:newmessage`, (e) => {
 	hljs.highlightAll();
 	scrollToLastChatBubble();
 });
+
+// Add this to handle the open_drive_search_modal event
+window.addEventListener("phx:open_drive_search_modal", (e) => {
+	// Implement the logic to open your Google Drive search modal here
+	console.log("Opening Google Drive search modal");
+	// You might want to use a library like Bootstrap's modal or implement your own
+});
