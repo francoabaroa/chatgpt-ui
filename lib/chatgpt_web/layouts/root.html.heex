@@ -21,68 +21,31 @@
     </style>
   </head>
   <body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 h-full">
-    <div class="flex h-full">
-      <!-- Sidebar -->
-      <aside class="w-80 bg-white dark:bg-gray-800 shadow-lg flex flex-col h-full fixed left-0 top-0 bottom-0 overflow-y-auto">
-        <div class="sticky top-0 z-20 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-          <a href="/" class="btn btn-ghost normal-case text-xl p-4 block">
-            <%= assigns[:page_title] || Application.get_env(:chatgpt, :title) %>
-          </a>
-        </div>
-
-        <div class="flex-grow overflow-y-auto">
-          <ul class="menu p-4 w-full">
-            <li>
-              <.link
-                class={Map.get(assigns, :mode, :chat) == :chat && "active"}
-                navigate={~p"/chat"}
-              >
+    <div class="drawer lg:drawer-open h-full">
+      <input id="my-drawer-2" type="checkbox" class="drawer-toggle" />
+      <div class="drawer-content flex flex-col h-full">
+        <!-- Navbar -->
+        <div class="sticky top-0 z-30 flex h-16 w-full justify-center bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+          <header class="navbar w-full">
+            <div class="flex-none lg:hidden">
+              <label for="my-drawer-2" class="btn btn-square btn-ghost">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
-                  stroke-width="1.5"
-                  stroke="currentColor"
-                  class="w-6 h-6"
+                  class="inline-block w-6 h-6 stroke-current"
                 >
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"
-                  />
-                </svg>
-                General Chat
-              </.link>
-            </li>
-            <li class="menu-title">
-              <h2 class="font-semibold mt-4">Assistants</h2>
-            </li>
-            <%= for {category, scenarios} <- Enum.group_by(scenarios(assigns), & &1.category) |> Enum.sort() do %>
-              <li class="menu-title">
-                <span class="font-medium text-gray-700 dark:text-gray-300 mt-2">
-                  <%= Phoenix.Naming.humanize(category) %>
-                </span>
-              </li>
-              <%= for scenario <- Enum.sort_by(scenarios, & &1.name) do %>
-                <li>
-                  <.link
-                    class={"#{active_scenario(Map.get(assigns, :scenario, nil), scenario)}"}
-                    navigate={~p"/assistant/#{scenario.id}"}
+                    stroke-width="2"
+                    d="M4 6h16M4 12h16M4 18h16"
                   >
-                    <%= scenario.name %>
-                  </.link>
-                </li>
-              <% end %>
-            <% end %>
-          </ul>
-        </div>
-      </aside>
-      <!-- Main content -->
-      <div class="flex-1 ml-80 flex flex-col h-full">
-        <div class="sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
-          <header class="flex items-center justify-between p-4">
-            <div class="text-2xl font-bold">Chat</div>
-            <!-- You can add a mobile menu button here if needed -->
+                  </path>
+                </svg>
+              </label>
+            </div>
+            <div class="flex-1 px-2 mx-2 text-2xl font-bold">Chat</div>
           </header>
         </div>
         <!-- Warning banner -->
@@ -91,9 +54,66 @@
           <p>If you refresh the page, you will lose the message history.</p>
         </div>
         <!-- Chat content -->
-        <div class="flex-grow overflow-y-auto relative">
+        <div class="flex-grow overflow-y-auto p-6">
           <%= @inner_content %>
         </div>
+      </div>
+      <!-- Sidebar -->
+      <div class="drawer-side">
+        <label for="my-drawer-2" class="drawer-overlay"></label>
+        <aside class="w-80 bg-white dark:bg-gray-800 shadow-lg flex flex-col h-full">
+          <div class="sticky top-0 z-20 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+            <a href="/" class="btn btn-ghost normal-case text-xl p-4 block">
+              <%= assigns[:page_title] || Application.get_env(:chatgpt, :title) %>
+            </a>
+          </div>
+          <div class="overflow-y-auto flex-grow">
+            <ul class="menu p-4 w-full">
+              <li>
+                <.link
+                  class={Map.get(assigns, :mode, :chat) == :chat && "active"}
+                  navigate={~p"/chat"}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke-width="1.5"
+                    stroke="currentColor"
+                    class="w-6 h-6"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"
+                    />
+                  </svg>
+                  General Chat
+                </.link>
+              </li>
+              <li class="menu-title">
+                <h2 class="font-semibold mt-4">Assistants</h2>
+              </li>
+              <%= for {category, scenarios} <- Enum.group_by(scenarios(assigns), & &1.category) |> Enum.sort() do %>
+                <li class="menu-title">
+                  <span class="font-medium text-gray-700 dark:text-gray-300 mt-2">
+                    <%= Phoenix.Naming.humanize(category) %>
+                  </span>
+                </li>
+                <%= for scenario <- Enum.sort_by(scenarios, & &1.name) do %>
+                  <li>
+                    <.link
+                      class={"#{active_scenario(Map.get(assigns, :scenario, nil), scenario)}"}
+                      navigate={~p"/assistant/#{scenario.id}"}
+                    >
+                      <%= scenario.name %>
+                    </.link>
+                  </li>
+                <% end %>
+              <% end %>
+            </ul>
+          </div>
+        </aside>
       </div>
     </div>
     <!-- Loading indicator -->

@@ -387,28 +387,28 @@ defmodule ChatgptWeb.IndexLive do
   def render(assigns) do
     ~H"""
     <div id="chatgpt" class="flex flex-col h-full relative">
-      <!-- Search button -->
-      <div class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900 p-4">
-        <button phx-click="open_drive_search" class="btn btn-primary float-right">
-          <svg
-            class="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            >
-            </path>
-          </svg>
-        </button>
-      </div>
       <!-- Chat messages -->
-      <div class="flex-grow overflow-y-auto px-4 pb-24">
+      <div class="flex-grow overflow-y-auto px-4 pb-24 pt-16">
+        <!-- Search button -->
+        <div class="absolute top-0 right-0 z-20 p-4 bg-gray-50 dark:bg-gray-900">
+          <button phx-click="open_drive_search" class="btn btn-primary">
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              >
+              </path>
+            </svg>
+          </button>
+        </div>
         <.live_component
           module={ChatgptWeb.MessageListComponent}
           messages={@dummy_messages ++ @messages ++ [@streaming_message]}
