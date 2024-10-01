@@ -63,7 +63,7 @@ defmodule ChatgptWeb.MessageComponent do
     ~H"""
     <div class="w-[30px] flex flex-col relative items-end">
       <div
-        style="background-color: rgb(61, 68, 81);"
+        style="background-color: #DBEAFE;"
         class="relative h-[30px] w-[30px] p-1 rounded-sm text-white flex items-center justify-center"
       >
         <svg
@@ -72,7 +72,7 @@ defmodule ChatgptWeb.MessageComponent do
           height="24"
           viewBox="0 0 24 24"
           fill="none"
-          stroke="currentColor"
+          stroke="#000"
           stroke-width="2"
           stroke-linecap="round"
           stroke-linejoin="round"

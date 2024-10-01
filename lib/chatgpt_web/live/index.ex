@@ -443,10 +443,6 @@ defmodule ChatgptWeb.IndexLive do
           disabled={@loading}
           id="textbox"
           selected_files={@selected_files}
-          #
-          Add
-          this
-          line
         />
       </div>
       <!-- Drive search modal -->
