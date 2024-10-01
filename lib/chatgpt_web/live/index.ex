@@ -386,52 +386,50 @@ defmodule ChatgptWeb.IndexLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div
-      id="chatgpt"
-      class="flex overflow-scroll bg-gray-50 dark:bg-gray-900"
-      style="height: calc(100vh - 64px); flex-direction: column;"
-    >
-      <button phx-click="open_drive_search" class="btn btn-primary self-end">
-        <svg
-          class="w-6 h-6"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+    <div id="chatgpt" class="flex flex-col h-full relative">
+      <!-- Search button -->
+      <div class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900 p-4">
+        <button phx-click="open_drive_search" class="btn btn-primary float-right">
+          <svg
+            class="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
           >
-          </path>
-        </svg>
-      </button>
-      <div class="mb-32" style="flex-grow: 1;">
-        <div>
-          <.live_component
-            module={ChatgptWeb.MessageListComponent}
-            messages={assigns.dummy_messages ++ assigns.messages ++ [assigns.streaming_message]}
-            id="myid"
-            copied_message_id={@copied_message_id}
-          />
-
-          <%= if Phoenix.Flash.get(@flash, :error) do %>
-            <div class="container mx-auto p-4">
-              <AlertComponent.render text={Phoenix.Flash.get(@flash, :error)} />
-            </div>
-          <% end %>
-
-          <%= if @loading == true do %>
-            <div class="container mx-auto p-4">
-              <LoadingIndicatorComponent.render />
-            </div>
-          <% end %>
-        </div>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            >
+            </path>
+          </svg>
+        </button>
       </div>
+      <!-- Chat messages -->
+      <div class="flex-grow overflow-y-auto px-4 pb-24">
+        <.live_component
+          module={ChatgptWeb.MessageListComponent}
+          messages={@dummy_messages ++ @messages ++ [@streaming_message]}
+          id="message-list"
+          copied_message_id={@copied_message_id}
+        />
 
-      <div class="sticky bottom-4 w-full border-t md:border-t-0 dark:border-white/20 md:border-transparent md:dark:border-transparent md:bg-vert-light-gradient bg-white dark:bg-gray-800 md:!bg-transparent dark:md:bg-vert-dark-gradient pt-2">
+        <%= if Phoenix.Flash.get(@flash, :error) do %>
+          <div class="my-4">
+            <AlertComponent.render text={Phoenix.Flash.get(@flash, :error)} />
+          </div>
+        <% end %>
+
+        <%= if @loading do %>
+          <div class="my-4">
+            <LoadingIndicatorComponent.render />
+          </div>
+        <% end %>
+      </div>
+      <!-- Input area -->
+      <div class="sticky bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 p-4">
         <.live_component
           on_submit={fn val -> Process.send(self(), {:msg_submit, val}, []) end}
           module={ChatgptWeb.TextboxComponent}
@@ -439,7 +437,7 @@ defmodule ChatgptWeb.IndexLive do
           id="textbox"
         />
       </div>
-
+      <!-- Drive search modal -->
       <%= if @show_drive_search_modal do %>
         <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
           <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">

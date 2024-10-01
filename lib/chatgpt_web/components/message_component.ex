@@ -1,11 +1,14 @@
 defmodule ChatgptWeb.MessageComponent do
   use ChatgptWeb, :live_component
 
-  defp style(:assistant), do: "chat-start "
+  defp style(:assistant), do: "chat-start"
   defp style(_), do: "chat-end"
 
-  defp bubble_style(:assistant), do: "bg-blue-600 text-white"
-  defp bubble_style(_), do: "bg-[#FFF] text-[#333] dark:text-slate-400 dark:bg-gray-700"
+  # Updated color scheme for assistant messages
+  defp bubble_style(:assistant),
+    do: "bg-blue-100 text-gray-800 dark:bg-blue-900 dark:text-gray-200"
+
+  defp bubble_style(_), do: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
 
   defp process_markdown(markdown) do
     # add list style
@@ -98,13 +101,13 @@ defmodule ChatgptWeb.MessageComponent do
           <%= render_avatar(assigns) %>
         </div>
       </div>
-      <div class={"chat-bubble shadow-[0_0_10px_rgba(0,0,0,0.10)] dark:shadow-[0_0_15px_rgba(0,0,0,0.10)] space-y-4 p-4 mb-4 rounded  w-full #{bubble_style(message.sender)}"}>
+      <div class={"chat-bubble shadow-sm space-y-4 p-4 mb-4 rounded w-full #{bubble_style(message.sender)}"}>
         <div class="message-content text-sm md:text-base leading-relaxed">
           <%= raw(@parsed_content) %>
         </div>
         <button
           id={"copy-button-#{message.id}"}
-          class="copy-button border border-white rounded p-1 hover:opacity-100 transition-all duration-200"
+          class="copy-button border border-current rounded p-1 hover:opacity-100 transition-all duration-200"
           phx-hook="CopyMessage"
           data-content={message.content}
           title="Copy to clipboard"
