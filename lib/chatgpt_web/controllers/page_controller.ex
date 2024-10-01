@@ -45,7 +45,9 @@ defmodule ChatgptWeb.PageController do
         %{
           "model" => model,
           "models" => Application.get_env(:chatgpt, :models, [model]),
-          "scenarios" => ChatgptWeb.Scenario.default_scenarios()
+          "scenarios" => ChatgptWeb.Scenario.default_scenarios(),
+          # Add this line
+          "access_token" => get_session(conn, "access_token")
         },
         args
       )

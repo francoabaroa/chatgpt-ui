@@ -1,12 +1,22 @@
 defmodule ChatgptWeb.TextboxComponent do
   use ChatgptWeb, :live_component
 
-  defp new_form(), do: to_form(%{"text" => "", "rand" => UUID.uuid4()}, as: :main)
+  defp new_form(text \\ ""), do: to_form(%{"text" => text, "rand" => UUID.uuid4()}, as: :main)
 
   def mount(socket) do
     {:ok,
      socket
      |> assign(form: new_form(), text: "")}
+  end
+
+  def update(%{append_text: append_text}, socket) do
+    current_text = socket.assigns.form.params["text"] || ""
+    updated_text = current_text <> "\n\n" <> append_text
+    {:ok, assign(socket, form: new_form(updated_text))}
+  end
+
+  def update(assigns, socket) do
+    {:ok, assign(socket, assigns)}
   end
 
   def handle_event("onsubmit", %{"main" => %{"text" => text}}, socket) do
@@ -16,10 +26,6 @@ defmodule ChatgptWeb.TextboxComponent do
     else
       {:noreply, socket}
     end
-  end
-
-  def handle_event("open_drive_search", _params, socket) do
-    {:noreply, push_event(socket, "open_drive_search_modal", %{})}
   end
 
   attr :field, Phoenix.HTML.FormField
@@ -85,23 +91,6 @@ defmodule ChatgptWeb.TextboxComponent do
             </svg>
           </button>
         </div>
-        <button phx-click="open_drive_search" class="btn btn-primary self-end">
-          <svg
-            class="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            >
-            </path>
-          </svg>
-        </button>
       </.form>
     </div>
     """

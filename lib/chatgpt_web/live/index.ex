@@ -35,8 +35,10 @@ defmodule ChatgptWeb.IndexLive do
       messages: [],
       loading: false,
       streaming_message: %Message{content: "", sender: :assistant, id: -1},
-      # Initialize copied_message_id here
-      copied_message_id: nil
+      copied_message_id: nil,
+      show_drive_search_modal: false,
+      drive_search_results: [],
+      drive_search_query: ""
     }
   end
 
@@ -91,7 +93,12 @@ defmodule ChatgptWeb.IndexLive do
        active_model: Enum.find(models, &(&1.id == to_atom(selected_model))),
        scenarios: Map.get(session, "scenarios"),
        scenario: scenario,
-       mode: :scenario
+       mode: :scenario,
+       show_drive_search_modal: false,
+       drive_search_results: [],
+       drive_search_query: "",
+       # Add this line
+       access_token: session["access_token"]
      })}
   end
 
@@ -108,13 +115,117 @@ defmodule ChatgptWeb.IndexLive do
        active_model: Enum.find(models, &(&1.id == to_atom(model))),
        models: models,
        scenarios: Map.get(session, "scenarios"),
-       mode: :chat
+       mode: :chat,
+       # Explicitly set this here
+       show_drive_search_modal: false,
+       # Add this line
+       access_token: session["access_token"]
      })}
   end
 
-  # Catch-all handler for any other events
+  def mount(_params, _session, socket) do
+    socket =
+      socket
+      |> assign(:show_drive_search_modal, false)
+      |> assign(:drive_search_results, [])
+      |> assign(:drive_search_query, "")
+
+    {:ok, socket}
+  end
+
   @impl true
-  def handle_event(_event, _params, socket) do
+  def handle_event("open_drive_search", _params, socket) do
+    {:noreply, assign(socket, show_drive_search_modal: true)}
+  end
+
+  @impl true
+  def handle_event("search_drive", %{"query" => query}, socket) do
+    # Use the access_token from the socket assigns
+    token = socket.assigns.access_token
+
+    case Chatgpt.Drive.search_files(token, query) do
+      {:ok, files} ->
+        formatted_results =
+          Enum.map(files, fn file ->
+            %{id: file.id, name: file.name}
+          end)
+
+        {:noreply,
+         assign(socket, drive_search_results: formatted_results, drive_search_query: query)}
+
+      {:error, reason} ->
+        {:noreply, socket |> put_flash(:error, "Error searching files: #{inspect(reason)}")}
+    end
+  end
+
+  @impl true
+  def handle_event("close_drive_search_modal", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(show_drive_search_modal: false)
+     |> assign(drive_search_query: "")
+     |> assign(drive_search_results: [])}
+  end
+
+  @impl true
+  def handle_event("add_selected_files", %{"selected_files" => selected_file_ids}, socket) do
+    token = socket.assigns.access_token
+
+    files_with_content =
+      Enum.map(selected_file_ids, fn file_id ->
+        case Chatgpt.Drive.get_file_info_and_content(token, file_id) do
+          {:ok, file, content} ->
+            %{file: file, content: content}
+
+          {:error, reason} ->
+            Logger.error(
+              "Failed to get file content for file_id: #{file_id}. Reason: #{inspect(reason)}"
+            )
+
+            nil
+        end
+      end)
+      |> Enum.filter(& &1)
+
+    if Enum.empty?(files_with_content) do
+      {:noreply,
+       socket
+       |> put_flash(:error, "Failed to retrieve content for the selected files.")}
+    else
+      # Combine all file contents into a single message
+      combined_message =
+        Enum.map_join(files_with_content, "\n\n", fn %{file: file, content: content} ->
+          "#{file.name}:\n\n#{content}"
+        end)
+
+      # Send the combined message to the textbox
+      send_update(ChatgptWeb.TextboxComponent, id: "textbox", append_text: combined_message)
+
+      {:noreply,
+       socket
+       |> assign(show_drive_search_modal: false)
+       |> put_flash(:info, "Added #{length(files_with_content)} file(s) to the textbox")}
+    end
+  end
+
+  # Handle the case when no files are selected
+  def handle_event("add_selected_files", _params, socket) do
+    {:noreply,
+     socket
+     |> put_flash(:error, "No files selected")}
+  end
+
+  def handle_event("close_drive_search", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(show_drive_search_modal: false)
+     |> assign(drive_search_query: "")
+     |> assign(drive_search_results: [])}
+  end
+
+  @impl true
+  def handle_event(event, _params, socket) do
+    IO.puts("Unhandled event: #{inspect(event)}")
     {:noreply, socket}
   end
 
@@ -280,6 +391,23 @@ defmodule ChatgptWeb.IndexLive do
       class="flex overflow-scroll bg-gray-50 dark:bg-gray-900"
       style="height: calc(100vh - 64px); flex-direction: column;"
     >
+      <button phx-click="open_drive_search" class="btn btn-primary self-end">
+        <svg
+          class="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          >
+          </path>
+        </svg>
+      </button>
       <div class="mb-32" style="flex-grow: 1;">
         <div>
           <.live_component
@@ -311,6 +439,55 @@ defmodule ChatgptWeb.IndexLive do
           id="textbox"
         />
       </div>
+
+      <%= if @show_drive_search_modal do %>
+        <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-xl font-bold">Search Google Drive</h2>
+              <button phx-click="close_drive_search_modal" class="text-gray-500 hover:text-gray-700">
+                &times;
+              </button>
+            </div>
+            <form phx-submit="search_drive" class="mb-4">
+              <input
+                type="text"
+                name="query"
+                value={@drive_search_query}
+                placeholder="Enter search query"
+                class="w-full p-2 border rounded"
+              />
+              <button type="submit" class="mt-2 w-full bg-blue-500 text-white p-2 rounded">
+                Search
+              </button>
+            </form>
+
+            <form phx-submit="add_selected_files">
+              <div class="search-results">
+                <%= if length(@drive_search_results) > 0 do %>
+                  <%= for result <- @drive_search_results do %>
+                    <div class="flex items-center mb-2">
+                      <input
+                        type="checkbox"
+                        name="selected_files[]"
+                        value={result.id}
+                        id={"file-#{result.id}"}
+                        class="mr-2"
+                      />
+                      <label for={"file-#{result.id}"}><%= result.name %></label>
+                    </div>
+                  <% end %>
+                  <button type="submit" class="w-full bg-green-500 text-white p-2 rounded mt-4">
+                    Add Selected Files
+                  </button>
+                <% else %>
+                  <p class="text-gray-500">No results found.</p>
+                <% end %>
+              </div>
+            </form>
+          </div>
+        </div>
+      <% end %>
     </div>
     """
   end

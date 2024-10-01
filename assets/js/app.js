@@ -112,3 +112,15 @@ window.addEventListener("phx:open_drive_search_modal", (e) => {
 	console.log("Opening Google Drive search modal");
 	// You might want to use a library like Bootstrap's modal or implement your own
 });
+
+// Add this near the end of the file
+window.addEventListener("phx:click", (e) => {
+	if (e.target.getAttribute("phx-click") === "open_drive_search") {
+		console.log("Search Google Drive button clicked");
+	}
+});
+
+// Add this new event listener
+window.addEventListener("phx:update", (e) => {
+	console.log("LiveView updated", e.detail);
+});

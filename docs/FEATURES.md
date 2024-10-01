@@ -1,3 +1,15 @@
+- delete search hist
+- when you add multiple files, they get added dupklicated
+- truncating file message content ... (or handle it like Anthropic. a paste file)
+
+Error Handling: Provide user feedback in case of errors or exceptions. let them submit error report
+Test with different search queries.
+Test selecting multiple files.
+Test including file contents vs. links.
+Handle cases where no files are found.
+Handle API errors gracefully.
+
+- if google drive permission not given,dont show error. toggle permission again or log out
 - When refreshing a page and need to auth back in, it takes you back to home instead of the link before you authed.
 - Download convo or save message to file
 - Chat text box in mobile hidden at first, need to scroll down
