@@ -1,3 +1,4 @@
+- if google drive permission not given,dont show error. toggle permission again or log out
 - delete search hist
 - when you add multiple files, they get added dupklicated
 - breaks when add 3 financial model sheeets (nothing gets pasted)
@@ -11,7 +12,7 @@ Test including file contents vs. links.
 Handle cases where no files are found.
 Handle API errors gracefully.
 
-- if google drive permission not given,dont show error. toggle permission again or log out
+- have a RAG embeddings store on all company docs so that users dont even need to load the files. just use the context given to them
 - When refreshing a page and need to auth back in, it takes you back to home instead of the link before you authed.
 - Download convo or save message to file
 - Chat text box in mobile hidden at first, need to scroll down

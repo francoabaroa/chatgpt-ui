@@ -1,4 +1,4 @@
-defmodule Chatgpt.Prompts.MarketingPlanAssistantPoli do
+defmodule Chatgpt.Prompts.MarketingPlanAssistant do
   def content() do
     """
     You are an AI who helps create a comprehensive and impactful marketing plan for Incurator's launch.
