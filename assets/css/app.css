@@ -99,3 +99,27 @@
   overflow-y: auto;
   word-wrap: break-word;
 }
+
+/* Custom tooltip styles */
+.group:hover .group-hover\:opacity-100 {
+  opacity: 1;
+}
+
+.group:hover .group-hover\:block {
+  display: block;
+}
+
+.group .opacity-0 {
+  opacity: 0;
+}
+
+.transition-opacity {
+  transition-property: opacity;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
+
+/* Ensure the tooltip doesn't get cut off */
+.drawer-side {
+  overflow: visible;
+}

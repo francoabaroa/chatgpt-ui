@@ -108,12 +108,17 @@
                 </li>
                 <%= for scenario <- Enum.sort_by(scenarios, & &1.name) do %>
                   <li>
-                    <.link
-                      class={"#{active_scenario(Map.get(assigns, :scenario, nil), scenario)}"}
-                      navigate={~p"/assistant/#{scenario.id}"}
-                    >
-                      <%= scenario.name %>
-                    </.link>
+                    <div class="group relative">
+                      <.link
+                        class={"#{active_scenario(Map.get(assigns, :scenario, nil), scenario)} flex items-center"}
+                        navigate={~p"/assistant/#{scenario.id}"}
+                      >
+                        <%= scenario.name %>
+                      </.link>
+                      <div class="absolute left-0 top-full mt-1 w-64 p-2 bg-gray-800 text-white text-sm rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 hidden group-hover:block">
+                        <%= scenario.description %>
+                      </div>
+                    </div>
                   </li>
                 <% end %>
               <% end %>
