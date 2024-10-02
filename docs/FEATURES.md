@@ -1,3 +1,4 @@
+- improvemnts for search modal - when clear search, clear results
 - if google drive permission not given,dont show error. toggle permission again or log out
 - delete search hist
 - when you add multiple files, they get added dupklicated

@@ -9,8 +9,10 @@ defmodule Chatgpt.Drive do
     params = [
       pageSize: 1000,
       fields: "files(id,name,mimeType,modifiedTime)",
-      # Add this line
-      q: "mimeType != 'application/vnd.google-apps.folder'"
+      q: "mimeType != 'application/vnd.google-apps.folder'",
+      includeItemsFromAllDrives: true,
+      supportsAllDrives: true,
+      corpora: "allDrives"
     ]
 
     case Files.drive_files_list(conn, params) do
@@ -29,7 +31,10 @@ defmodule Chatgpt.Drive do
       q:
         "name contains '#{String.replace(query, "'", "\\'")}' and mimeType != 'application/vnd.google-apps.folder'",
       pageSize: 100,
-      fields: "files(id,name,mimeType,modifiedTime)"
+      fields: "files(id,name,mimeType,modifiedTime,driveId)",
+      includeItemsFromAllDrives: true,
+      supportsAllDrives: true,
+      corpora: "allDrives"
     ]
 
     case Files.drive_files_list(conn, params) do
@@ -44,7 +49,7 @@ defmodule Chatgpt.Drive do
   def get_file_info_and_content(token, file_id) do
     conn = Connection.new(token)
 
-    with {:ok, file} <- Files.drive_files_get(conn, file_id),
+    with {:ok, file} <- Files.drive_files_get(conn, file_id, supportsAllDrives: true),
          {:ok, content} <- get_file_content(conn, file) do
       {:ok, file, content}
     else
@@ -60,16 +65,16 @@ defmodule Chatgpt.Drive do
   defp get_file_content(conn, file) do
     case file.mimeType do
       "application/vnd.google-apps.document" ->
-        Files.drive_files_export(conn, file.id, "text/plain")
+        Files.drive_files_export(conn, file.id, "text/plain", supportsAllDrives: true)
 
       "application/vnd.google-apps.spreadsheet" ->
-        Files.drive_files_export(conn, file.id, "text/csv")
+        Files.drive_files_export(conn, file.id, "text/csv", supportsAllDrives: true)
 
       "application/vnd.google-apps.presentation" ->
-        Files.drive_files_export(conn, file.id, "text/plain")
+        Files.drive_files_export(conn, file.id, "text/plain", supportsAllDrives: true)
 
       _ ->
-        Files.drive_files_get(conn, file.id, alt: "media")
+        Files.drive_files_get(conn, file.id, alt: "media", supportsAllDrives: true)
     end
     |> case do
       {:ok, %Tesla.Env{body: content}} -> {:ok, content}

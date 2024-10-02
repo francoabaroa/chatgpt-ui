@@ -141,21 +141,33 @@ defmodule ChatgptWeb.IndexLive do
 
   @impl true
   def handle_event("search_drive", %{"query" => query}, socket) do
-    # Use the access_token from the socket assigns
     token = socket.assigns.access_token
 
     case Chatgpt.Drive.search_files(token, query) do
       {:ok, files} ->
         formatted_results =
           Enum.map(files, fn file ->
-            %{id: file.id, name: file.name}
+            %{
+              id: file.id,
+              name: file.name,
+              mimeType: file.mimeType,
+              modifiedTime: file.modifiedTime,
+              isSharedDrive: Map.get(file, :driveId) != nil
+            }
           end)
 
         {:noreply,
-         assign(socket, drive_search_results: formatted_results, drive_search_query: query)}
+         socket
+         |> assign(drive_search_results: formatted_results)
+         |> assign(drive_search_query: query)
+         |> put_flash(:info, "Search completed. Results include files from shared drives.")}
 
       {:error, reason} ->
-        {:noreply, socket |> put_flash(:error, "Error searching files: #{inspect(reason)}")}
+        {:noreply,
+         socket
+         |> put_flash(:error, "Error searching files: #{inspect(reason)}")
+         |> assign(drive_search_results: [])
+         |> assign(drive_search_query: query)}
     end
   end
 
@@ -480,7 +492,12 @@ defmodule ChatgptWeb.IndexLive do
                         id={"file-#{result.id}"}
                         class="mr-2"
                       />
-                      <label for={"file-#{result.id}"}><%= result.name %></label>
+                      <label for={"file-#{result.id}"}>
+                        <%= result.name %>
+                        <%= if result.isSharedDrive do %>
+                          <span class="text-xs text-blue-500">(Shared)</span>
+                        <% end %>
+                      </label>
                     </div>
                   <% end %>
                   <button type="submit" class="w-full bg-green-500 text-white p-2 rounded mt-4">
