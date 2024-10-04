@@ -1,3 +1,4 @@
+- if you type a message, then add a file, the message gets wiped
 - improvemnts for search modal - when clear search, clear results
 - if google drive permission not given,dont show error. toggle permission again or log out
 - delete search hist
