@@ -14,6 +14,11 @@ defmodule ChatgptWeb.Endpoint do
 
   socket "/live", Phoenix.LiveView.Socket, websocket: [connect_info: [session: @session_options]]
 
+  # Add this line for the new socket
+  socket "/socket", ChatgptWeb.UserSocket,
+    websocket: true,
+    longpoll: false
+
   # Serve at "/" the static files from "priv/static" directory.
   #
   # You should set gzip to true if you are running phx.digest
@@ -23,6 +28,13 @@ defmodule ChatgptWeb.Endpoint do
     from: :chatgpt,
     gzip: false,
     only: ChatgptWeb.static_paths()
+
+  # Add this line to serve JavaScript files
+  plug Plug.Static,
+    at: "/js",
+    from: {:chatgpt, "priv/static/js"},
+    gzip: false,
+    only: ~w(resampler-processor.js audio-playback-processor.js)
 
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.

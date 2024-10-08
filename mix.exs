@@ -72,7 +72,9 @@ defmodule Chatgpt.MixProject do
       {:google_api_drive, "~> 0.30.1"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
-      {:dotenv, "~> 3.0.0", only: [:dev, :test]}
+      {:dotenv, "~> 3.0.0", only: [:dev, :test]},
+      {:phoenix_pubsub, "~> 2.1"},
+      {:websockex, "~> 0.4.3"}
     ]
   end
 

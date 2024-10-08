@@ -22,9 +22,12 @@ defmodule Chatgpt.Application do
       ChatgptWeb.Endpoint,
       # Start a worker by calling: Chatgpt.Worker.start_link(arg)
       # {Chatgpt.Worker, arg},
-      Chatgpt.Tokenizer
+      Chatgpt.Tokenizer,
       # TODO: only needed if using vertex?
       # {Goth, name: Chatgpt.Goth}
+
+      # Add the DynamicSupervisor for RealtimeApiClient processes
+      {DynamicSupervisor, strategy: :one_for_one, name: Chatgpt.RealtimeApiClientSupervisor}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
