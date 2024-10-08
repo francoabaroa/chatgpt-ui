@@ -4,6 +4,9 @@ defmodule ChatgptWeb.IndexLive do
   alias ChatgptWeb.AlertComponent
   use ChatgptWeb, :live_view
   require Logger
+  alias Chatgpt.RealtimeApiClient
+
+  # TODO why on_submit={fn val -> send(self(), {:msg_submit, val}) end} needed?
 
   @type state :: %{
           messages: [Message.t()],
@@ -39,7 +42,10 @@ defmodule ChatgptWeb.IndexLive do
       show_drive_search_modal: false,
       drive_search_results: [],
       drive_search_query: "",
-      selected_files: []
+      selected_files: [],
+      additional_data: %{},
+      function_calls: [],
+      function_outputs: []
     }
   end
 
@@ -99,7 +105,10 @@ defmodule ChatgptWeb.IndexLive do
        drive_search_results: [],
        drive_search_query: "",
        # Add this line
-       access_token: session["access_token"]
+       access_token: session["access_token"],
+       additional_data: %{},
+       function_calls: [],
+       function_outputs: []
      })}
   end
 
@@ -115,23 +124,21 @@ defmodule ChatgptWeb.IndexLive do
        dummy_messages: dummy_messages() |> fill_random_id(),
        active_model: Enum.find(models, &(&1.id == to_atom(model))),
        models: models,
+       session_id: nil,
        scenarios: Map.get(session, "scenarios"),
        mode: :chat,
        # Explicitly set this here
        show_drive_search_modal: false,
        # Add this line
-       access_token: session["access_token"]
+       access_token: session["access_token"],
+       additional_data: %{},
+       function_calls: [],
+       function_outputs: []
      })}
   end
 
   def mount(_params, _session, socket) do
-    socket =
-      socket
-      |> assign(:show_drive_search_modal, false)
-      |> assign(:drive_search_results, [])
-      |> assign(:drive_search_query, "")
-
-    {:ok, socket}
+    {:ok, socket |> assign(initial_state()) |> assign(:api_client_pid, nil)}
   end
 
   @impl true
@@ -140,34 +147,47 @@ defmodule ChatgptWeb.IndexLive do
   end
 
   @impl true
+  def handle_event("start_voice_chat", _params, socket) do
+    {:ok, api_client_pid} = RealtimeApiClient.start_link(channel_pid: self())
+
+    {:noreply,
+     socket
+     |> assign(:api_client_pid, api_client_pid)
+     |> push_event("voice_chat_started", %{})}
+  end
+
+  @impl true
+  def handle_event("stop_voice_chat", _params, socket) do
+    if socket.assigns[:api_client_pid] do
+      Process.exit(socket.assigns.api_client_pid, :normal)
+
+      {:noreply,
+       socket
+       |> assign(:voice_chat_active, false)
+       |> assign(:api_client_pid, nil)
+       |> push_event("voice_chat_stopped", %{})}
+    else
+      {:noreply, socket |> put_flash(:error, "No active voice chat to stop")}
+    end
+  end
+
+  @impl true
   def handle_event("search_drive", %{"query" => query}, socket) do
+    # Use the access_token from the socket assigns
     token = socket.assigns.access_token
 
     case Chatgpt.Drive.search_files(token, query) do
       {:ok, files} ->
         formatted_results =
           Enum.map(files, fn file ->
-            %{
-              id: file.id,
-              name: file.name,
-              mimeType: file.mimeType,
-              modifiedTime: file.modifiedTime,
-              isSharedDrive: Map.get(file, :driveId) != nil
-            }
+            %{id: file.id, name: file.name}
           end)
 
         {:noreply,
-         socket
-         |> assign(drive_search_results: formatted_results)
-         |> assign(drive_search_query: query)
-         |> put_flash(:info, "Search completed. Results include files from shared drives.")}
+         assign(socket, drive_search_results: formatted_results, drive_search_query: query)}
 
       {:error, reason} ->
-        {:noreply,
-         socket
-         |> put_flash(:error, "Error searching files: #{inspect(reason)}")
-         |> assign(drive_search_results: [])
-         |> assign(drive_search_query: query)}
+        {:noreply, socket |> put_flash(:error, "Error searching files: #{inspect(reason)}")}
     end
   end
 
@@ -403,14 +423,378 @@ defmodule ChatgptWeb.IndexLive do
   end
 
   @impl true
+  def handle_event("send_text", %{"text" => text}, socket) do
+    # Send text to RealtimeChannel
+    ChatgptWeb.Endpoint.broadcast_from(
+      socket.assigns.myself,
+      "realtime:" <> socket.id,
+      "text_input",
+      %{"text" => text}
+    )
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("send_audio", %{"audio" => audio_data}, socket) do
+    RealtimeApiClient.handle_audio_input(socket.assigns.api_client, audio_data)
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("interrupt_voice_chat", _params, socket) do
+    if socket.assigns[:api_client] do
+      WebSockex.cast(socket.assigns.api_client, :interrupt)
+    end
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:realtime_event, event_type, payload}, socket) do
+    case event_type do
+      :session_created ->
+        Logger.info("Session created: #{inspect(payload["session"])}")
+        {:noreply, socket}
+
+      :session_updated ->
+        Logger.info("Session updated: #{inspect(payload["session"])}")
+        {:noreply, socket}
+
+      :speech_started ->
+        {:noreply, push_event(socket, "speech_started", %{})}
+
+      :speech_stopped ->
+        {:noreply, push_event(socket, "speech_stopped", %{})}
+
+      :audio_buffer_committed ->
+        {:noreply, push_event(socket, "audio_committed", %{})}
+
+      :conversation_item_created ->
+        new_message = extract_message_from_event(payload)
+        {:noreply, assign(socket, messages: socket.assigns.messages ++ [new_message])}
+
+      :text_delta ->
+        streaming_message =
+          socket.assigns.streaming_message
+          |> Map.update(:content, "", &(&1 <> payload["delta"]))
+
+        {:noreply, assign(socket, streaming_message: streaming_message)}
+
+      :audio_delta ->
+        {:noreply, push_event(socket, "audio_delta", %{"delta" => payload["delta"]})}
+
+      :response_done ->
+        Process.send(self(), :commit_streaming_message, [])
+        {:noreply, socket}
+
+      :response_created ->
+        {:noreply, socket}
+
+      :output_item_added ->
+        {:noreply, socket}
+
+      :content_part_added ->
+        {:noreply, socket}
+
+      :audio_transcript_delta ->
+        {:noreply, socket}
+
+      :audio_done ->
+        {:noreply, socket}
+
+      :audio_transcript_done ->
+        {:noreply, socket}
+
+      :content_part_done ->
+        {:noreply, socket}
+
+      :output_item_done ->
+        {:noreply, socket}
+
+      :rate_limits_updated ->
+        {:noreply, socket}
+
+      _ ->
+        Logger.warn("LiveView Unhandled event type: #{event_type}")
+        {:noreply, socket}
+    end
+  end
+
+  defp extract_message_from_event(event) do
+    %Message{
+      content: event["item"]["content"],
+      sender: String.to_atom(event["item"]["role"]),
+      id: generate_id()
+    }
+  end
+
+  defp extract_function_call_from_event(event) do
+    %{
+      name: event["function_call"]["name"],
+      arguments: event["function_call"]["arguments"],
+      id: generate_id()
+    }
+  end
+
+  defp extract_function_output_from_event(event) do
+    %{
+      output: event["output"],
+      id: generate_id()
+    }
+  end
+
+  @impl true
+  def handle_event("send_audio_chunk", %{"audio" => base64_audio}, socket) do
+    if socket.assigns[:api_client_pid] do
+      WebSockex.cast(socket.assigns.api_client_pid, {:send_audio_chunk, base64_audio})
+      {:noreply, socket}
+    else
+      {:noreply, socket |> put_flash(:error, "Voice chat is not active")}
+    end
+  end
+
+  @impl true
+  def handle_event("commit_audio", _params, socket) do
+    if socket.assigns[:api_client_pid] do
+      WebSockex.cast(socket.assigns.api_client_pid, :send_audio_commit)
+      {:noreply, socket}
+    else
+      {:noreply, socket |> put_flash(:error, "Voice chat is not active")}
+    end
+  end
+
+  def handle_info({:realtime_event, event_type, payload}, socket) do
+    event_type_str = Atom.to_string(event_type)
+
+    case event_type_str do
+      "session_created" ->
+        Logger.info("Session created: #{inspect(payload["session"])}")
+        {:noreply, socket}
+
+      "session_updated" ->
+        Logger.info("Session updated: #{inspect(payload["session"])}")
+        {:noreply, socket}
+
+      "speech_started" ->
+        {:noreply, push_event(socket, "speech_started", %{})}
+
+      "speech_stopped" ->
+        {:noreply, push_event(socket, "speech_stopped", %{})}
+
+      "audio_buffer_committed" ->
+        {:noreply, push_event(socket, "audio_committed", %{})}
+
+      "conversation_item_created" ->
+        new_message = extract_message_from_event(payload)
+        {:noreply, assign(socket, messages: socket.assigns.messages ++ [new_message])}
+
+      "text_delta" ->
+        streaming_message =
+          socket.assigns.streaming_message
+          |> Map.update(:content, "", &(&1 <> payload["delta"]))
+
+        {:noreply, assign(socket, streaming_message: streaming_message)}
+
+      "audio_delta" ->
+        {:noreply, push_event(socket, "audio_delta", %{"delta" => payload["delta"]})}
+
+      "audio_transcript_delta" ->
+        # Update the last message's transcript with the new delta
+        updated_messages =
+          update_last_message_transcript(socket.assigns.messages, payload["delta"])
+
+        {:noreply, assign(socket, messages: updated_messages)}
+
+      "response_done" ->
+        Process.send(self(), :commit_streaming_message, [])
+        {:noreply, socket}
+
+      "response_created" ->
+        Logger.info("Response created: #{inspect(payload["response"])}")
+        {:noreply, socket}
+
+      "output_item_added" ->
+        Logger.info("Output item added: #{inspect(payload["item"])}")
+        {:noreply, socket}
+
+      "content_part_added" ->
+        Logger.info("Content part added: #{inspect(payload["part"])}")
+        {:noreply, socket}
+
+      "audio_done" ->
+        Logger.info("Audio done")
+        {:noreply, socket}
+
+      "audio_transcript_done" ->
+        Logger.info("Audio transcript done")
+        {:noreply, socket}
+
+      "content_part_done" ->
+        Logger.info("Content part done")
+        {:noreply, socket}
+
+      "output_item_done" ->
+        Logger.info("Output item done")
+        {:noreply, socket}
+
+      "rate_limits_updated" ->
+        Logger.info("Rate limits updated: #{inspect(payload["rate_limits"])}")
+        {:noreply, socket}
+
+      _ ->
+        Logger.warn("LiveView Unhandled event type: #{event_type_str}")
+        {:noreply, socket}
+    end
+  end
+
+  defp handle_conversation_item_created(socket, payload) do
+    content_parts = payload["item"]["content"]
+
+    new_message = %{
+      content: content_parts,
+      sender: payload["item"]["role"],
+      id: generate_id()
+    }
+
+    socket
+    |> update(:messages, fn messages -> messages ++ [new_message] end)
+    |> push_event("new_message", %{message: new_message})
+  end
+
+  defp handle_audio_transcript_delta(socket, payload) do
+    # Update the last message's transcript instead of using a separate :transcription assign
+    updated_messages = update_last_message_transcript(socket.assigns.messages, payload["delta"])
+
+    socket
+    |> assign(:messages, updated_messages)
+    |> push_event("transcription_update", %{delta: payload["delta"]})
+  end
+
+  defp update_last_message_transcript(messages, delta) do
+    case List.last(messages) do
+      %{sender: "user", content: content} when is_list(content) ->
+        updated_content = update_content_with_delta(content, delta)
+        List.update_at(messages, -1, fn msg -> %{msg | content: updated_content} end)
+
+      _ ->
+        messages
+    end
+  end
+
+  defp update_content_with_delta(content, delta) do
+    Enum.map(content, fn
+      %{"type" => "input_audio", "transcript" => transcript} = part ->
+        %{part | "transcript" => (transcript || "") <> delta}
+
+      other ->
+        other
+    end)
+  end
+
+  @impl true
+  def handle_event("send_audio_chunk", %{"audio" => base64_audio}, socket) do
+    if socket.assigns[:api_client] do
+      RealtimeApiClient.handle_audio_input(socket.assigns.api_client, base64_audio)
+    else
+      Logger.error("API client not available")
+    end
+
+    {:noreply, socket}
+  end
+
+  # Add these new handle_info functions:
+
+  def handle_info({:realtime, "response.audio.delta", event}, socket) do
+    {:noreply, push_event(socket, "audio_delta", %{"delta" => event["delta"]})}
+  end
+
+  def handle_info({:realtime, "response.text.delta", event}, socket) do
+    {:noreply, push_event(socket, "text_delta", %{"delta" => event["delta"]})}
+  end
+
+  def handle_info({:realtime, "response.end", _event}, socket) do
+    {:noreply, push_event(socket, "response_end", %{})}
+  end
+
+  def handle_info({:realtime, "error", event}, socket) do
+    {:noreply, socket |> put_flash(:error, "API Error: #{event["message"]}")}
+  end
+
+  # Add a generic handler for events that need standard processing
+  def handle_info({:realtime, event_type, event}, socket)
+      when event_type in [
+             "session.created",
+             "session.updated",
+             "conversation.item.created",
+             "conversation.item.updated",
+             "conversation.item.completed",
+             "input_audio_buffer.speech_stopped",
+             "input_audio_buffer.committed",
+             "response.created",
+             "response.output_item.added",
+             "response.content_part.added"
+           ] do
+    Logger.info("LiveView Received API event: #{event_type}")
+    # You can add any standard processing here
+    {:noreply, socket}
+  end
+
+  # Optionally, add a catch-all handler for any unhandled events
+  def handle_info({:realtime, event_type, event}, socket) do
+    Logger.warn("LiveView Unhandled API event: #{event_type}")
+    {:noreply, socket}
+  end
+
+  # Add these new handle_info clauses:
+
+  def handle_info({:realtime, "session.created", event}, socket) do
+    Logger.info("Session created: #{inspect(event["session"])}")
+    {:noreply, socket}
+  end
+
+  def handle_info({:realtime, "session.updated", event}, socket) do
+    Logger.info("Session updated: #{inspect(event["session"])}")
+    {:noreply, socket}
+  end
+
+  # Update the existing handle_info clause for "input_audio_buffer.speech_started"
+  def handle_info({:realtime, "input_audio_buffer.speech_started", event}, socket) do
+    Logger.info("Speech started: #{inspect(event)}")
+    {:noreply, push_event(socket, "speech_started", %{})}
+  end
+
+  # Replace the existing handle_info clause for "response.audio_transcript.delta" with this:
+
+  def handle_info({:realtime, "response.audio_transcript.delta", event}, socket) do
+    Logger.info("Audio transcript delta: #{inspect(event)}")
+
+    updated_messages = update_last_message_transcript(socket.assigns.messages, event["delta"])
+
+    {:noreply,
+     socket
+     |> assign(:messages, updated_messages)
+     |> push_event("audio_transcript_delta", %{delta: event["delta"]})}
+  end
+
+  def handle_info(
+        {:realtime, "conversation.item.input_audio_transcription.completed", event},
+        socket
+      ) do
+    Logger.info("Audio transcription completed: #{inspect(event)}")
+    # Update the corresponding message with the transcript
+    {:noreply, socket}
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <div id="chatgpt" class="flex flex-col h-full relative">
       <!-- Chat messages -->
       <div class="flex-grow overflow-y-auto px-4 pb-24 pt-16">
-        <!-- Search button -->
-        <div class="absolute top-0 right-0 z-20 p-4 bg-gray-50 dark:bg-gray-900">
-          <button phx-click="open_drive_search" class="btn btn-primary">
+        <!-- Search and Voice Chat buttons -->
+        <div class="absolute top-0 right-0 z-20 p-4 bg-gray-50 dark:bg-gray-900 flex">
+          <button phx-click="open_drive_search" class="btn btn-primary mr-2">
             <svg
               class="w-6 h-6"
               fill="none"
@@ -427,10 +811,34 @@ defmodule ChatgptWeb.IndexLive do
               </path>
             </svg>
           </button>
+          <div id="voice-chat" phx-hook="VoiceChat">
+            <!-- Voice Chat Controls -->
+            <div id="voice-chat-controls" class="flex space-x-2 mt-4">
+              <button id="start-voice-chat" phx-click="start_voice_chat" class="btn btn-primary">
+                Start Voice Chat
+              </button>
+              <button
+                id="stop-recording"
+                phx-click="stop_voice_chat"
+                style="display: none;"
+                class="btn btn-secondary"
+              >
+                Stop Recording
+              </button>
+              <button
+                id="interrupt-voice-chat"
+                phx-click="interrupt_voice_chat"
+                style="display: none;"
+                class="btn btn-danger"
+              >
+                Interrupt
+              </button>
+            </div>
+          </div>
         </div>
         <.live_component
           module={ChatgptWeb.MessageListComponent}
-          messages={@dummy_messages ++ @messages ++ [@streaming_message]}
+          messages={@messages ++ [@streaming_message]}
           id="message-list"
           copied_message_id={@copied_message_id}
         />
@@ -444,6 +852,33 @@ defmodule ChatgptWeb.IndexLive do
         <%= if @loading do %>
           <div class="my-4">
             <LoadingIndicatorComponent.render />
+          </div>
+        <% end %>
+        <!-- Function calls -->
+        <%= if length(@function_calls) > 0 do %>
+          <div class="my-4">
+            <h3 class="text-lg font-semibold">Function Calls</h3>
+            <%= for call <- @function_calls do %>
+              <div class="bg-gray-100 dark:bg-gray-700 p-2 rounded mt-2">
+                <p><strong><%= call.name %></strong></p>
+                <pre><code><%= Jason.encode!(call.arguments, pretty: true) %></code></pre>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+        <!-- Function outputs -->
+        <%= if length(@function_outputs) > 0 do %>
+          <div class="my-4">
+            <h3 class="text-lg font-semibold">Function Outputs</h3>
+            <%= for output <- @function_outputs do %>
+              <div class="bg-gray-100 dark:bg-gray-700 p-2 rounded mt-2">
+                <%= if is_binary(output.output) do %>
+                  <p><%= output.output %></p>
+                <% else %>
+                  <pre><code><%= Jason.encode!(output.output, pretty: true) %></code></pre>
+                <% end %>
+              </div>
+            <% end %>
           </div>
         <% end %>
       </div>
@@ -492,12 +927,7 @@ defmodule ChatgptWeb.IndexLive do
                         id={"file-#{result.id}"}
                         class="mr-2"
                       />
-                      <label for={"file-#{result.id}"}>
-                        <%= result.name %>
-                        <%= if result.isSharedDrive do %>
-                          <span class="text-xs text-blue-500">(Shared)</span>
-                        <% end %>
-                      </label>
+                      <label for={"file-#{result.id}"}><%= result.name %></label>
                     </div>
                   <% end %>
                   <button type="submit" class="w-full bg-green-500 text-white p-2 rounded mt-4">
@@ -513,5 +943,16 @@ defmodule ChatgptWeb.IndexLive do
       <% end %>
     </div>
     """
+  end
+
+  # Add this new terminate/2 function near the end of the module:
+
+  @impl true
+  def terminate(_reason, socket) do
+    if socket.assigns[:api_client_pid] && Process.alive?(socket.assigns.api_client_pid) do
+      Process.exit(socket.assigns.api_client_pid, :normal)
+    end
+
+    :ok
   end
 end

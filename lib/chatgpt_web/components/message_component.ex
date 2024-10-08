@@ -151,4 +151,60 @@ defmodule ChatgptWeb.MessageComponent do
     </div>
     """
   end
+
+  # Helper function to safely convert sender to atom
+  defp role_atom(s) when is_atom(s), do: s
+  defp role_atom("assistant"), do: :assistant
+  defp role_atom("user"), do: :user
+  defp role_atom("system"), do: :system
+  defp role_atom(_), do: :assistant
+
+  # New function clause for handling content parts
+  def render(%{message: content_parts} = assigns) when is_list(content_parts) do
+    content =
+      Enum.map_join(content_parts, "\n", fn content_part ->
+        case content_part["type"] do
+          "text" -> content_part["text"] || "[Empty text]"
+          "input_text" -> content_part["text"] || "[Empty input text]"
+          "input_audio" -> content_part["transcript"] || "[Awaiting transcription...]"
+          "audio" -> content_part["transcript"] || "[Audio message]"
+          _ -> "[Unknown content type]"
+        end
+      end)
+
+    assigns = assign(assigns, :parsed_content, process_markdown(content))
+    # Use the helper function here
+    assigns = assign(assigns, :sender, role_atom(assigns[:sender]))
+
+    assigns =
+      assign_new(assigns, :id, fn ->
+        assigns[:id] || :erlang.unique_integer([:positive]) |> to_string()
+      end)
+
+    ~H"""
+    <div class={"chat #{style(@sender)}"}>
+      <div class="chat-image avatar">
+        <div class="w-10">
+          <%= render_avatar(assigns) %>
+        </div>
+      </div>
+      <div class={"chat-bubble shadow-sm space-y-4 p-4 mb-4 rounded w-full #{bubble_style(@sender)}"}>
+        <div class="message-content text-sm md:text-base leading-relaxed">
+          <%= raw(@parsed_content) %>
+        </div>
+        <%= if @sender != :user do %>
+          <button
+            id={"copy-button-#{@id}"}
+            class="copy-button border border-current rounded p-1 hover:opacity-100 transition-all duration-200"
+            phx-hook="CopyMessage"
+            data-content={content}
+            title="Copy to clipboard"
+          >
+            📋
+          </button>
+        <% end %>
+      </div>
+    </div>
+    """
+  end
 end

@@ -1,4 +1,5 @@
 - improvemnts for search modal - when clear search, clear results
+- add branscript to google drive and embed it in all queries if possible
 - if google drive permission not given,dont show error. toggle permission again or log out
 - delete search hist
 - when you add multiple files, they get added dupklicated
