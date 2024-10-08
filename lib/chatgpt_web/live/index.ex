@@ -45,7 +45,9 @@ defmodule ChatgptWeb.IndexLive do
       selected_files: [],
       additional_data: %{},
       function_calls: [],
-      function_outputs: []
+      function_outputs: [],
+      # Add this line
+      voice_chat_active: false
     }
   end
 
@@ -117,6 +119,7 @@ defmodule ChatgptWeb.IndexLive do
 
     {:ok,
      socket
+     # This now includes :voice_chat_active
      |> assign(initial_state())
      |> assign(%{
        model: model,
@@ -127,9 +130,7 @@ defmodule ChatgptWeb.IndexLive do
        session_id: nil,
        scenarios: Map.get(session, "scenarios"),
        mode: :chat,
-       # Explicitly set this here
        show_drive_search_modal: false,
-       # Add this line
        access_token: session["access_token"],
        additional_data: %{},
        function_calls: [],
@@ -138,7 +139,11 @@ defmodule ChatgptWeb.IndexLive do
   end
 
   def mount(_params, _session, socket) do
-    {:ok, socket |> assign(initial_state()) |> assign(:api_client_pid, nil)}
+    {:ok,
+     socket
+     # This now includes :voice_chat_active
+     |> assign(initial_state())
+     |> assign(:api_client_pid, nil)}
   end
 
   @impl true
@@ -153,6 +158,7 @@ defmodule ChatgptWeb.IndexLive do
     {:noreply,
      socket
      |> assign(:api_client_pid, api_client_pid)
+     |> assign(:voice_chat_active, true)
      |> push_event("voice_chat_started", %{})}
   end
 
@@ -814,25 +820,22 @@ defmodule ChatgptWeb.IndexLive do
           <div id="voice-chat" phx-hook="VoiceChat">
             <!-- Voice Chat Controls -->
             <div id="voice-chat-controls" class="flex space-x-2 mt-4">
-              <button id="start-voice-chat" phx-click="start_voice_chat" class="btn btn-primary">
-                Start Voice Chat
-              </button>
-              <button
-                id="stop-recording"
-                phx-click="stop_voice_chat"
-                style="display: none;"
-                class="btn btn-secondary"
-              >
-                Stop Recording
-              </button>
-              <button
-                id="interrupt-voice-chat"
-                phx-click="interrupt_voice_chat"
-                style="display: none;"
-                class="btn btn-danger"
-              >
-                Interrupt
-              </button>
+              <%= if @voice_chat_active do %>
+                <button id="stop-recording" phx-click="stop_voice_chat" class="btn btn-secondary">
+                  Stop Recording
+                </button>
+                <button
+                  id="interrupt-voice-chat"
+                  phx-click="interrupt_voice_chat"
+                  class="btn btn-danger"
+                >
+                  Interrupt
+                </button>
+              <% else %>
+                <button id="start-voice-chat" phx-click="start_voice_chat" class="btn btn-primary">
+                  Start Voice Chat
+                </button>
+              <% end %>
             </div>
           </div>
         </div>

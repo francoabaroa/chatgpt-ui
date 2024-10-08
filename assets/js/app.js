@@ -74,6 +74,15 @@ Hooks.VoiceChat = {
 	async mounted() {
 		console.log("VoiceChat hook mounted");
 
+		// Initialize audio contexts and playback variables
+		this.audioContext = null; // For recording
+		this.playbackAudioContext = new (window.AudioContext || window.webkitAudioContext)(); // For playback
+		this.audioQueue = [];
+		this.isPlaying = false;
+
+		this.gainNode = this.playbackAudioContext.createGain();
+		this.gainNode.connect(this.playbackAudioContext.destination);
+
 		this.handleEvent("voice_chat_started", async () => {
 			await this.startVoiceChat();
 		});
@@ -81,11 +90,6 @@ Hooks.VoiceChat = {
 		this.handleEvent("voice_chat_stopped", () => {
 			this.stopVoiceChat();
 		});
-
-		// Initialize audio context and playback variables
-		this.audioContext = null;
-		this.audioQueue = [];
-		this.isPlaying = false;
 
 		// Handle incoming audio chunks
 		this.handleEvent("audio_delta", (event) => {
@@ -98,14 +102,17 @@ Hooks.VoiceChat = {
 
 	async startVoiceChat() {
 		console.log("Starting voice chat");
-		if (!this.audioContext || this.audioContext.state === 'closed') {
-			await this.setupAudioWorklet();
-		} else if (this.audioContext.state === 'suspended') {
-			await this.audioContext.resume();
+		try {
+			if (!this.audioContext || this.audioContext.state === 'closed') {
+				await this.setupAudioWorklet();
+			} else if (this.audioContext.state === 'suspended') {
+				await this.audioContext.resume();
+			}
+		} catch (error) {
+			console.error("Error starting voice chat:", error);
+			// Optionally, notify the user about the error
+			this.pushEvent("voice_chat_error", { message: "Failed to start voice chat" });
 		}
-		// Update UI elements
-		document.getElementById("stop-recording").style.display = "block";
-		document.getElementById("start-voice-chat").style.display = "none";
 	},
 
 	stopVoiceChat() {
@@ -113,13 +120,14 @@ Hooks.VoiceChat = {
 			this.audioContext.close();
 		}
 		this.audioContext = null;
-		this.stream.getTracks().forEach(track => track.stop());
-		this.stream = null;
+		if (this.stream) {
+			this.stream.getTracks().forEach(track => track.stop());
+			this.stream = null;
+		}
 		this.source = null;
 		this.resamplerNode = null;
 		console.log("Stopping voice chat");
-		document.getElementById("stop-recording").style.display = "none";
-		document.getElementById("start-voice-chat").style.display = "block";
+		// Note: We're not closing playbackAudioContext here
 	},
 
 	async setupAudioWorklet() {
@@ -424,8 +432,8 @@ Hooks.VoiceChat = {
 				: -((0xFFFF - sample + 1) / 0x8000);
 		}
 
-		// Create AudioBuffer and enqueue
-		const audioBuffer = this.audioContext.createBuffer(1, float32Array.length, 24000);
+		// Create AudioBuffer and enqueue using playbackAudioContext
+		const audioBuffer = this.playbackAudioContext.createBuffer(1, float32Array.length, 24000);
 		audioBuffer.copyToChannel(float32Array, 0);
 
 		this.audioQueue.push(audioBuffer);
@@ -440,15 +448,21 @@ Hooks.VoiceChat = {
 		this.isPlaying = true;
 		const audioBuffer = this.audioQueue.shift();
 
-		const source = this.audioContext.createBufferSource();
+		const source = this.playbackAudioContext.createBufferSource();
 		source.buffer = audioBuffer;
-		source.connect(this.audioContext.destination);
+		source.connect(this.gainNode);
 		source.start();
 
 		source.onended = () => {
 			this.isPlaying = false;
 			this.playAudioQueue();
 		};
+	},
+
+	setVolume(volume) {
+		if (this.gainNode) {
+			this.gainNode.gain.setValueAtTime(volume, this.playbackAudioContext.currentTime);
+		}
 	},
 
 	createWavFile(byteArray) {
@@ -511,6 +525,60 @@ Hooks.VoiceChat = {
 
 	commitAudio() {
 		this.pushEvent('commit_audio', {});
+	},
+
+	destroyed() {
+		if (this.audioContext && this.audioContext.state !== 'closed') {
+			this.audioContext.close();
+		}
+		if (this.playbackAudioContext && this.playbackAudioContext.state !== 'closed') {
+			this.playbackAudioContext.close();
+		}
+	},
+
+	pauseAudio() {
+		if (this.playbackAudioContext.state === 'running') {
+			this.playbackAudioContext.suspend();
+		}
+	},
+
+	resumeAudio() {
+		if (this.playbackAudioContext.state === 'suspended') {
+			this.playbackAudioContext.resume();
+		}
+	},
+
+	setupAudioVisualizer() {
+		this.analyser = this.playbackAudioContext.createAnalyser();
+		this.analyser.fftSize = 256;
+		this.gainNode.connect(this.analyser);
+
+		const bufferLength = this.analyser.frequencyBinCount;
+		const dataArray = new Uint8Array(bufferLength);
+
+		const canvas = document.getElementById('visualizer');
+		const canvasCtx = canvas.getContext('2d');
+
+		const draw = () => {
+			requestAnimationFrame(draw);
+			this.analyser.getByteFrequencyData(dataArray);
+
+			canvasCtx.fillStyle = 'rgb(0, 0, 0)';
+			canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+			const barWidth = (canvas.width / bufferLength) * 2.5;
+			let barHeight;
+			let x = 0;
+
+			for (let i = 0; i < bufferLength; i++) {
+				barHeight = dataArray[i] / 2;
+				canvasCtx.fillStyle = `rgb(${barHeight + 100},50,50)`;
+				canvasCtx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight);
+				x += barWidth + 1;
+			}
+		};
+
+		draw();
 	},
 };
 
