@@ -38,7 +38,8 @@ Hooks.CopyMessage = {
 		this.el.addEventListener("click", () => {
 			const content = this.el.getAttribute("data-content");
 			if (content) {
-				navigator.clipboard.writeText(content)
+				navigator.clipboard
+					.writeText(content)
 					.then(() => {
 						this.el.innerText = "✅";
 						setTimeout(() => {
@@ -76,13 +77,18 @@ Hooks.VoiceChat = {
 
 		// Initialize audio contexts and playback variables
 		this.audioContext = null; // For recording
-		this.playbackAudioContext = new (window.AudioContext || window.webkitAudioContext)(); // For playback
-		this.audioQueue = [];
-		this.isPlaying = false;
+		this.playbackAudioContext = new (window.AudioContext ||
+			window.webkitAudioContext)({ sampleRate: 24000 }); // For playback
 
+		// Create a buffer queue to handle audio chunks
+		this.audioQueue = []; // Array to hold audio chunks
+		this.isPlaying = false; // Flag to check if audio is currently playing
+
+		// Create a GainNode for volume control
 		this.gainNode = this.playbackAudioContext.createGain();
 		this.gainNode.connect(this.playbackAudioContext.destination);
 
+		// Handle voice chat events
 		this.handleEvent("voice_chat_started", async () => {
 			await this.startVoiceChat();
 		});
@@ -97,17 +103,14 @@ Hooks.VoiceChat = {
 			this.enqueueAudio(event.delta);
 		});
 
+		// Handle server events (existing event handlers)
 		this.handleServerEvents();
 	},
 
 	async startVoiceChat() {
 		console.log("Starting voice chat");
 		try {
-			if (!this.audioContext || this.audioContext.state === 'closed') {
-				await this.setupAudioWorklet();
-			} else if (this.audioContext.state === 'suspended') {
-				await this.audioContext.resume();
-			}
+			await this.setupAudioRecording();
 		} catch (error) {
 			console.error("Error starting voice chat:", error);
 			// Optionally, notify the user about the error
@@ -116,105 +119,173 @@ Hooks.VoiceChat = {
 	},
 
 	stopVoiceChat() {
-		if (this.audioContext && this.audioContext.state !== 'closed') {
+		if (this.audioContext && this.audioContext.state !== "closed") {
 			this.audioContext.close();
 		}
 		this.audioContext = null;
 		if (this.stream) {
-			this.stream.getTracks().forEach(track => track.stop());
+			this.stream.getTracks().forEach((track) => track.stop());
 			this.stream = null;
 		}
 		this.source = null;
-		this.resamplerNode = null;
+		this.processor = null;
 		console.log("Stopping voice chat");
-		// Note: We're not closing playbackAudioContext here
 	},
 
-	async setupAudioWorklet() {
-		this.audioContext = new AudioContext();
+	async setupAudioRecording() {
+		// Create AudioContext for recording
+		this.audioContext = new (window.AudioContext || window.webkitAudioContext)({
+			sampleRate: 24000,
+		});
 
-		// Load the audio worklet
-		await this.audioContext.audioWorklet.addModule('/js/resampler-processor.js');
+		// Ensure the AudioContext is running
+		if (this.audioContext.state === "suspended") {
+			await this.audioContext.resume();
+		}
 
-		// Create the worklet node
-		this.resamplerNode = new AudioWorkletNode(this.audioContext, 'resampler-processor');
+		// AudioWorklet processor code as a string
+		const recorderProcessorCode = `
+    class RecorderProcessor extends AudioWorkletProcessor {
+      constructor() {
+        super();
+      }
+
+      process(inputs, outputs, parameters) {
+        const input = inputs[0];
+        if (input && input[0]) {
+          const samples = input[0];
+
+          // Send samples to the main thread
+          this.port.postMessage(samples);
+        }
+        return true;
+      }
+    }
+
+    registerProcessor('recorder-processor', RecorderProcessor);
+    `;
+
+		// Create a Blob and Object URL for the processor code
+		const blob = new Blob([recorderProcessorCode], { type: "application/javascript" });
+		const url = URL.createObjectURL(blob);
+
+		// Add the processor module
+		await this.audioContext.audioWorklet.addModule(url);
+		URL.revokeObjectURL(url); // Clean up the object URL
+
+		// Create the AudioWorkletNode
+		this.processor = new AudioWorkletNode(this.audioContext, "recorder-processor");
 
 		// Handle messages from the processor
-		this.resamplerNode.port.onmessage = (event) => {
-			const float32Array = event.data;
+		this.processor.port.onmessage = (event) => {
+			const inputData = event.data;
 
-			// Convert Float32Array to base64-encoded PCM16 data
-			const base64Audio = this.base64EncodeAudio(float32Array);
+			// Convert Float32Array to Int16Array PCM data
+			const pcmData = this.convertFloat32ToInt16(inputData);
+
+			// Convert PCM data to base64
+			const base64Audio = this.arrayBufferToBase64(pcmData);
 
 			// Send audio data to the server
 			this.pushEvent("send_audio_chunk", { audio: base64Audio });
 		};
 
-		// Send sample rate to the processor
-		this.resamplerNode.port.postMessage({ sampleRate: this.audioContext.sampleRate });
-
 		// Obtain audio input stream
 		this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 		this.source = this.audioContext.createMediaStreamSource(this.stream);
 
-		// Connect the nodes
-		this.source.connect(this.resamplerNode);
-		// We don't connect the resamplerNode to any destination since we're only processing audio
+		this.source.connect(this.processor);
+		// We don't connect the processor to the destination to prevent feedback
 	},
 
-	async resampleAudio(buffer, inputSampleRate, outputSampleRate) {
-		const numberOfChannels = 1;
-		const offlineContext = new OfflineAudioContext(numberOfChannels, buffer.length, inputSampleRate);
-		const audioBuffer = offlineContext.createBuffer(numberOfChannels, buffer.length, inputSampleRate);
-		audioBuffer.copyToChannel(buffer, 0);
-
-		const bufferSource = offlineContext.createBufferSource();
-		bufferSource.buffer = audioBuffer;
-		bufferSource.connect(offlineContext.destination);
-		bufferSource.start(0);
-
-		const renderedBuffer = await offlineContext.startRendering();
-
-		// Now, resample to the desired sample rate
-		const resampledOfflineContext = new OfflineAudioContext(
-			numberOfChannels,
-			Math.ceil(renderedBuffer.duration * outputSampleRate),
-			outputSampleRate
-		);
-		const resampledBufferSource = resampledOfflineContext.createBufferSource();
-		resampledBufferSource.buffer = renderedBuffer;
-		resampledBufferSource.connect(resampledOfflineContext.destination);
-		resampledBufferSource.start(0);
-
-		const resampledBuffer = await resampledOfflineContext.startRendering();
-
-		return resampledBuffer.getChannelData(0);
-	},
-
-	floatTo16BitPCM(float32Array) {
+	convertFloat32ToInt16(float32Array) {
 		const buffer = new ArrayBuffer(float32Array.length * 2);
 		const view = new DataView(buffer);
-		let offset = 0;
-		for (let i = 0; i < float32Array.length; i++, offset += 2) {
+		for (let i = 0; i < float32Array.length; i++) {
 			let s = Math.max(-1, Math.min(1, float32Array[i]));
-			view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+			view.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true); // Little Endian
 		}
 		return buffer;
 	},
 
-	base64EncodeAudio(float32Array) {
-		const arrayBuffer = this.floatTo16BitPCM(float32Array);
+	arrayBufferToBase64(buffer) {
+		// Note: buffer is an ArrayBuffer
 		let binary = '';
-		let bytes = new Uint8Array(arrayBuffer);
-		const chunkSize = 0x8000; // 32KB chunk size
-		for (let i = 0; i < bytes.length; i += chunkSize) {
-			let chunk = bytes.subarray(i, i + chunkSize);
-			binary += String.fromCharCode.apply(null, chunk);
+		const bytes = new Uint8Array(buffer);
+		const len = bytes.byteLength;
+		for (let i = 0; i < len; i++) {
+			binary += String.fromCharCode(bytes[i]);
 		}
-		return btoa(binary);
+		return window.btoa(binary);
+	},
+
+	// Updated enqueueAudio function
+	enqueueAudio(base64Audio) {
+		// Decode base64 audio data
+		const binaryString = atob(base64Audio);
+		const len = binaryString.length;
+		const bytes = new Uint8Array(len);
+		for (let i = 0; i < len; i++) {
+			bytes[i] = binaryString.charCodeAt(i);
+		}
+
+		// Use DataView to read Int16 values with correct endianness
+		const dataView = new DataView(bytes.buffer);
+		const bufferLength = bytes.byteLength / 2;
+		const float32Array = new Float32Array(bufferLength);
+		for (let i = 0; i < bufferLength; i++) {
+			const sample = dataView.getInt16(i * 2, true); // Little Endian
+			float32Array[i] = sample / 0x8000;
+		}
+
+		// Create AudioBuffer
+		const audioBuffer = this.playbackAudioContext.createBuffer(
+			1,
+			float32Array.length,
+			24000
+		);
+		audioBuffer.copyToChannel(float32Array, 0);
+
+		// Enqueue the audio buffer
+		this.audioQueue.push(audioBuffer);
+
+		// Start playback if not already playing
+		if (!this.isPlaying) {
+			this.playAudioQueue();
+		}
+	},
+
+	// New function to handle audio queue playback
+	playAudioQueue() {
+		if (this.audioQueue.length === 0) {
+			this.isPlaying = false;
+			return;
+		}
+
+		this.isPlaying = true;
+		const audioBuffer = this.audioQueue.shift();
+
+		const source = this.playbackAudioContext.createBufferSource();
+		source.buffer = audioBuffer;
+		source.connect(this.gainNode);
+
+		source.start();
+
+		source.onended = () => {
+			// After the current buffer finishes, play the next one
+			this.playAudioQueue();
+		};
+	},
+
+	setVolume(volume) {
+		if (this.gainNode) {
+			this.gainNode.gain.setValueAtTime(volume, this.playbackAudioContext.currentTime);
+		}
 	},
 
 	handleServerEvents() {
+		// Existing event handlers remain unchanged
+
 		this.handleEvent("error", (event) => {
 			console.error("API error:", event.error);
 			// Display error message to user
@@ -253,13 +324,19 @@ Hooks.VoiceChat = {
 			this.updateChatUI(event.item);
 		});
 
-		this.handleEvent("conversation_item_input_audio_transcription_completed", (event) => {
-			console.log("Audio transcription completed:", event);
-		});
+		this.handleEvent(
+			"conversation_item_input_audio_transcription_completed",
+			(event) => {
+				console.log("Audio transcription completed:", event);
+			}
+		);
 
-		this.handleEvent("conversation_item_input_audio_transcription_failed", (event) => {
-			console.error("Audio transcription failed:", event.error);
-		});
+		this.handleEvent(
+			"conversation_item_input_audio_transcription_failed",
+			(event) => {
+				console.error("Audio transcription failed:", event.error);
+			}
+		);
 
 		this.handleEvent("conversation_item_truncated", (event) => {
 			console.log("Conversation item truncated:", event);
@@ -313,11 +390,12 @@ Hooks.VoiceChat = {
 
 		this.handleEvent("response_audio_delta", (event) => {
 			console.log("Audio delta received");
-			this.playAudio(event.delta);
+			this.enqueueAudio(event.delta);
 		});
 
 		this.handleEvent("response_audio_done", () => {
 			console.log("Audio done");
+			// No need to reset playback time as we're handling playback via queue
 		});
 
 		this.handleEvent("response_function_call_arguments_delta", (event) => {
@@ -337,70 +415,16 @@ Hooks.VoiceChat = {
 			this.appendToAssistantMessage(event.delta);
 		});
 
-		this.handleEvent("audio_delta", ({ delta }) => {
-			// Handle audio delta (e.g., play the audio)
-		});
-
-		this.handleEvent("audio_done", () => {
-			// Handle audio completion
-		});
-
-		this.handleEvent("audio_transcript_done", () => {
-			// Handle transcript completion
-		});
-
-		this.handleEvent("content_part_done", () => {
-			// Handle content part completion
-		});
-
-		this.handleEvent("output_item_done", () => {
-			// Handle output item completion
-		});
-
-		this.handleEvent("response_done", () => {
-			// Handle overall response completion
-		});
-
-		this.handleEvent("rate_limits_updated", (data) => {
-			// Handle rate limit updates
-		});
-
-		this.handleEvent("input_audio_buffer.speech_started", (event) => {
-			console.log("Speech started", event);
-		});
-
-		this.handleEvent("input_audio_buffer.speech_stopped", (event) => {
-			console.log("Speech stopped", event);
-			this.commitAudio();
-		});
-
-		this.handleEvent("conversation.item.input_audio_transcription.completed", (event) => {
-			console.log("Transcription completed", event);
-		});
-
-		this.handleEvent("response.text.delta", (event) => {
-			console.log("Received text delta", event);
-			this.appendToAssistantMessage(event.delta);
-		});
-
-		this.handleEvent("response.audio.delta", (event) => {
-			console.log("Received audio delta", event);
-			this.playAudio(event.delta);
-		});
-
-		this.handleEvent("response.done", (event) => {
-			console.log("Response done", event);
-			this.finishAssistantMessage();
-		});
+		// Additional events if needed
 	},
 
 	appendToAssistantMessage(delta) {
-		let assistantMessage = document.getElementById('assistant-message');
+		let assistantMessage = document.getElementById("assistant-message");
 		if (!assistantMessage) {
-			assistantMessage = document.createElement('div');
-			assistantMessage.id = 'assistant-message';
-			assistantMessage.className = 'message assistant';
-			document.getElementById('chat-window').appendChild(assistantMessage);
+			assistantMessage = document.createElement("div");
+			assistantMessage.id = "assistant-message";
+			assistantMessage.className = "message assistant";
+			document.getElementById("chat-window").appendChild(assistantMessage);
 		}
 		assistantMessage.textContent += delta;
 		scrollToLastChatBubble();
@@ -412,111 +436,13 @@ Hooks.VoiceChat = {
 		hljs.highlightAll();
 	},
 
-	enqueueAudio(base64Audio) {
-		// Decode base64 audio data
-		const audioData = atob(base64Audio);
-		const byteArray = new Uint8Array(audioData.length);
-		for (let i = 0; i < audioData.length; i++) {
-			byteArray[i] = audioData.charCodeAt(i);
-		}
-
-		// Convert PCM16 data to Float32Array
-		const bufferLength = byteArray.length / 2;
-		const float32Array = new Float32Array(bufferLength);
-		for (let i = 0; i < bufferLength; i++) {
-			const index = i * 2;
-			const sample = (byteArray[index + 1] << 8) | byteArray[index];
-			// Convert from 16-bit PCM to float (-1 to 1)
-			float32Array[i] = sample < 0x8000
-				? sample / 0x8000
-				: -((0xFFFF - sample + 1) / 0x8000);
-		}
-
-		// Create AudioBuffer and enqueue using playbackAudioContext
-		const audioBuffer = this.playbackAudioContext.createBuffer(1, float32Array.length, 24000);
-		audioBuffer.copyToChannel(float32Array, 0);
-
-		this.audioQueue.push(audioBuffer);
-		this.playAudioQueue();
-	},
-
-	playAudioQueue() {
-		if (this.isPlaying || this.audioQueue.length === 0) {
-			return;
-		}
-
-		this.isPlaying = true;
-		const audioBuffer = this.audioQueue.shift();
-
-		const source = this.playbackAudioContext.createBufferSource();
-		source.buffer = audioBuffer;
-		source.connect(this.gainNode);
-		source.start();
-
-		source.onended = () => {
-			this.isPlaying = false;
-			this.playAudioQueue();
-		};
-	},
-
-	setVolume(volume) {
-		if (this.gainNode) {
-			this.gainNode.gain.setValueAtTime(volume, this.playbackAudioContext.currentTime);
-		}
-	},
-
-	createWavFile(byteArray) {
-		const buffer = new ArrayBuffer(44 + byteArray.length);
-		const view = new DataView(buffer);
-
-		/* RIFF identifier */
-		this.writeString(view, 0, 'RIFF');
-		/* file length */
-		view.setUint32(4, 36 + byteArray.length, true);
-		/* RIFF type */
-		this.writeString(view, 8, 'WAVE');
-		/* format chunk identifier */
-		this.writeString(view, 12, 'fmt ');
-		/* format chunk length */
-		view.setUint32(16, 16, true);
-		/* sample format (raw) */
-		view.setUint16(20, 1, true);
-		/* channel count */
-		view.setUint16(22, 1, true);
-		/* sample rate */
-		view.setUint32(24, 24000, true);
-		/* byte rate (sample rate * block align) */
-		view.setUint32(28, 24000 * 2, true);
-		/* block align (channel count * bytes per sample) */
-		view.setUint16(32, 2, true);
-		/* bits per sample */
-		view.setUint16(34, 16, true);
-		/* data chunk identifier */
-		this.writeString(view, 36, 'data');
-		/* data chunk length */
-		view.setUint32(40, byteArray.length, true);
-
-		// Write PCM samples
-		for (let i = 0; i < byteArray.length; i++) {
-			view.setUint8(44 + i, byteArray[i]);
-		}
-
-		return buffer;
-	},
-
-	writeString(view, offset, string) {
-		for (let i = 0; i < string.length; i++) {
-			view.setUint8(offset + i, string.charCodeAt(i));
-		}
-	},
-
 	updateChatUI(item) {
-		const chatWindow = document.getElementById('chat-window');
+		const chatWindow = document.getElementById("chat-window");
 		if (!chatWindow) {
-			console.error('Chat window element not found');
+			console.error("Chat window element not found");
 			return;
 		}
-		const messageElement = document.createElement('div');
+		const messageElement = document.createElement("div");
 		messageElement.className = `message ${item.role}`;
 		messageElement.textContent = item.content[0].text;
 		chatWindow.appendChild(messageElement);
@@ -524,62 +450,65 @@ Hooks.VoiceChat = {
 	},
 
 	commitAudio() {
-		this.pushEvent('commit_audio', {});
+		this.pushEvent("commit_audio", {});
 	},
 
 	destroyed() {
-		if (this.audioContext && this.audioContext.state !== 'closed') {
+		if (this.audioContext && this.audioContext.state !== "closed") {
 			this.audioContext.close();
 		}
-		if (this.playbackAudioContext && this.playbackAudioContext.state !== 'closed') {
+		if (
+			this.playbackAudioContext &&
+			this.playbackAudioContext.state !== "closed"
+		) {
 			this.playbackAudioContext.close();
 		}
 	},
 
 	pauseAudio() {
-		if (this.playbackAudioContext.state === 'running') {
+		if (this.playbackAudioContext.state === "running") {
 			this.playbackAudioContext.suspend();
 		}
 	},
 
 	resumeAudio() {
-		if (this.playbackAudioContext.state === 'suspended') {
+		if (this.playbackAudioContext.state === "suspended") {
 			this.playbackAudioContext.resume();
 		}
 	},
+	// Optional: Implement audio visualization if needed
+	// setupAudioVisualizer() {
+	//   this.analyser = this.playbackAudioContext.createAnalyser();
+	//   this.analyser.fftSize = 256;
+	//   this.gainNode.connect(this.analyser);
 
-	setupAudioVisualizer() {
-		this.analyser = this.playbackAudioContext.createAnalyser();
-		this.analyser.fftSize = 256;
-		this.gainNode.connect(this.analyser);
+	//   const bufferLength = this.analyser.frequencyBinCount;
+	//   const dataArray = new Uint8Array(bufferLength);
 
-		const bufferLength = this.analyser.frequencyBinCount;
-		const dataArray = new Uint8Array(bufferLength);
+	//   const canvas = document.getElementById("visualizer");
+	//   const canvasCtx = canvas.getContext("2d");
 
-		const canvas = document.getElementById('visualizer');
-		const canvasCtx = canvas.getContext('2d');
+	//   const draw = () => {
+	//     requestAnimationFrame(draw);
+	//     this.analyser.getByteFrequencyData(dataArray);
 
-		const draw = () => {
-			requestAnimationFrame(draw);
-			this.analyser.getByteFrequencyData(dataArray);
+	//     canvasCtx.fillStyle = "rgb(0, 0, 0)";
+	//     canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
 
-			canvasCtx.fillStyle = 'rgb(0, 0, 0)';
-			canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+	//     const barWidth = (canvas.width / bufferLength) * 2.5;
+	//     let barHeight;
+	//     let x = 0;
 
-			const barWidth = (canvas.width / bufferLength) * 2.5;
-			let barHeight;
-			let x = 0;
+	//     for (let i = 0; i < bufferLength; i++) {
+	//       barHeight = dataArray[i] / 2;
+	//       canvasCtx.fillStyle = `rgb(${barHeight + 100},50,50)`;
+	//       canvasCtx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight);
+	//       x += barWidth + 1;
+	//     }
+	//   };
 
-			for (let i = 0; i < bufferLength; i++) {
-				barHeight = dataArray[i] / 2;
-				canvasCtx.fillStyle = `rgb(${barHeight + 100},50,50)`;
-				canvasCtx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight);
-				x += barWidth + 1;
-			}
-		};
-
-		draw();
-	},
+	//   draw();
+	// },
 };
 
 let csrfToken = document
@@ -589,7 +518,7 @@ let csrfToken = document
 let liveSocket = new LiveSocket("/live", Socket, {
 	params: { _csrf_token: csrfToken },
 	hooks: Hooks,
-	socket: new Socket("/socket", { params: { token: window.userToken } })
+	socket: new Socket("/socket", { params: { token: window.userToken } }),
 });
 
 // Show progress bar on live navigation and form submits
@@ -628,7 +557,7 @@ window.addEventListener("phx:update", (e) => {
 });
 
 // Handle voice chat start event
-window.addEventListener("phx:start_voice_chat", (e) => {
-	console.log("Starting voice chat");
+window.addEventListener("phx:start_voice_mode", (e) => {
+	console.log("Starting voice mode");
 	// You might want to add some UI indication that voice chat is active
 });
